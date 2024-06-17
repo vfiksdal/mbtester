@@ -1,0 +1,23 @@
+{
+    "identity": {
+        "VendorName": "MBTester",
+        "ProductCode": "Test Profile",
+        "VendorUrl": "https://github.com/vfiksdal/mbtester",
+        "ProductName": "Simple Test Profile",
+        "ModelName": "Simple Test Profile",
+        "MajorMinorRevision": "1.0.0"
+    },
+    "datablocks": {
+        "di": {},
+        "co": {},
+        "hr": {
+            "1": {"dsc": "8bit int","dtype": "uint8","value": 123},
+            "2": {"dsc": "16bit int","dtype": "uint16","value": 12345},
+            "3": {"dsc": "32bit int","dtype": "uint32","value": 123456789},
+            "5": {"dsc": "Single-precision float","dtype": "float","value": 1234.456789},
+            "7": {"dsc": "Double-precision float","dtype": "double","value": 1234.456789},
+            "11": {"dsc": "String","dtype": "string","value": "Testing MODBUS string register value"}
+        },
+        "ir": {}
+    }
+}

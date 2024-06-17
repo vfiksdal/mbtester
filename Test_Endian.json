@@ -1,0 +1,27 @@
+{
+    "identity": {
+        "VendorName": "MBTester",
+        "ProductCode": "Test Profile",
+        "VendorUrl": "https://github.com/vfiksdal/mbtester",
+        "ProductName": "Endian Test Profile",
+        "ModelName": "Test Profile",
+        "MajorMinorRevision": "1.0.0"
+    },
+    "datablocks": {
+        "di": {},
+        "co": {},
+        "hr": {
+            "1": {"dsc": "8bit int","dtype": "uint8","value": 123},
+            "2": {"dsc": "16bit int little endian","bo": "<","dtype": "uint16","value": 12345},
+            "3": {"dsc": "16bit int big endian","bo": ">","dtype": "uint16","value": 12345},
+            "4": {"dsc": "32bit int little endian","bo": "<","wo": "<","dtype": "uint32","value": 123456789},
+            "6": {"dsc": "32bit int big endian","bo": ">","wo": ">","dtype": "uint32","value": 123456789},
+            "8": {"dsc": "Single-precision float little endian","bo": "<","wo": "<","dtype": "float","value": 1234.456789},
+            "10": {"dsc": "Single-precision float big endian","bo": ">","wo": ">","dtype": "float","value": 1234.456789},
+            "12": {"dsc": "Double-precision float little endian","bo": "<","wo": "<","dtype": "double","value": 1234.456789},
+            "16": {"dsc": "Double-precision float big endian","bo": ">","wo": ">","dtype": "double","value": 1234.456789},
+            "20": {"dsc": "String","bo": ">","wo": ">","dtype": "string","value": "Testing MODBUS string register value"}
+        },
+        "ir": {}
+    }
+}
