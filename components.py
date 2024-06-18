@@ -46,6 +46,7 @@ class ConFrame(QFrame):
         layout.addWidget(self.clearbutton)
         layout.addWidget(self.savebutton)
         self.setLayout(layout)
+        Utils.setMargins(layout)
 
     ##\brief Called when loglevel has changed
     # \param index New loglevel
@@ -264,10 +265,10 @@ class Connect(QDialog):
     ##\brief Rearranges the dialog according the users choice of interface
     # \param index Index om the selected communication interface
     def commChanged(self,index):
-        is_serial=(self.commlist.itemText(index)=='Serial')
         self.framerlist.clear()
-        self.framerlist.addItem('RTU')
+        is_serial=(self.commlist.itemText(index)=='Serial')
         if not is_serial: self.framerlist.addItem('Socket')
+        self.framerlist.addItem('RTU')
         self.framerlist.addItem('ASCII')
         self.framerlist.setCurrentIndex(0)
         self.hostlabel.setVisible(not is_serial)

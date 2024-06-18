@@ -45,14 +45,21 @@ class ServerTableFrame(QFrame):
         layout=QVBoxLayout()
         layout.addWidget(self.tablewidget,1)
         self.setLayout(layout)
+        Utils.setMargins(layout)
 
         self.datablock=datablock
         self.server=server
-        if self.datablock=='di': self.server.di.cb_write=self.Update
-        if self.datablock=='co': self.server.co.cb_write=self.Update
-        if self.datablock=='hr': self.server.hr.cb_write=self.Update
-        if self.datablock=='ir': self.server.ir.cb_write=self.Update
+        if self.datablock=='di': self.server.di.cb_write=self.UpdateWrite
+        if self.datablock=='co': self.server.co.cb_write=self.UpdateWrite
+        if self.datablock=='hr': self.server.hr.cb_write=self.UpdateWrite
+        if self.datablock=='ir': self.server.ir.cb_write=self.UpdateWrite
+        if self.datablock=='di': self.server.di.cb_read=self.UpdateRead
+        if self.datablock=='co': self.server.co.cb_read=self.UpdateRead
+        if self.datablock=='hr': self.server.hr.cb_read=self.UpdateRead
+        if self.datablock=='ir': self.server.ir.cb_read=self.UpdateRead
         self.updates=[]
+        self.rcount=0
+        self.wcount=0
 
         # Populate table
         registers=server.profile['datablocks'][datablock]
@@ -71,14 +78,21 @@ class ServerTableFrame(QFrame):
             for j in range(len(self.table[i])):
                 self.tablewidget.setItem(i,j,QTableWidgetItem(str(self.table[i][j])))
 
+    def GetStatus(self):
+        return len(self.table)-1,self.rcount,self.wcount
+
     ##\brief Update read/write value
     # \param address Register address that has changed
     # \param value New register value
     #
     # This method only tags the changed value. The actual UI will be updated later on
     # the main UI thread -- See UpdateUI().
-    def Update(self,address,value):
+    def UpdateWrite(self,address,value):
         self.updates.append([address,value])
+        self.wcount+=1
+
+    def UpdateRead(self,address,value):
+        self.rcount+=1
 
     ##\brief Update UI controls
     #
@@ -134,25 +148,16 @@ class ServerUI(QMainWindow):
         # Add statusbar
         self.statusbar=QStatusBar()
         self.status_progress=QProgressBar()
-        self.status_debug=QLineEdit()
-        self.status_info=QLineEdit()
-        self.status_warnings=QLineEdit()
-        self.status_errors=QLineEdit()
-        self.status_queue=QLineEdit()
-        self.status_duration=QLineEdit()
+        self.status_icount=QLineEdit()
+        self.status_rcount=QLineEdit()
+        self.status_wcount=QLineEdit()
         self.status_progress.setEnabled(False)
-        self.status_debug.setEnabled(False)
-        self.status_info.setEnabled(False)
-        self.status_warnings.setEnabled(False)
-        self.status_errors.setEnabled(False)
-        self.status_queue.setEnabled(False)
-        self.status_duration.setEnabled(False)
-        self.statusbar.addWidget(self.status_duration,1)
-        self.statusbar.addWidget(self.status_queue,1)
-        self.statusbar.addWidget(self.status_debug,1)
-        self.statusbar.addWidget(self.status_info,1)
-        self.statusbar.addWidget(self.status_warnings,1)
-        self.statusbar.addWidget(self.status_errors,1)
+        self.status_icount.setEnabled(False)
+        self.status_rcount.setEnabled(False)
+        self.status_wcount.setEnabled(False)
+        self.statusbar.addWidget(self.status_icount)
+        self.statusbar.addWidget(self.status_rcount)
+        self.statusbar.addWidget(self.status_wcount)
         self.statusbar.addWidget(self.status_progress,1)
         self.setStatusBar(self.statusbar)
         self.status_progress.setAlignment(Qt.AlignCenter)
@@ -243,6 +248,19 @@ class ServerUI(QMainWindow):
         self.table_hr.UpdateUI()
         self.table_ir.UpdateUI()
 
+        # Update status
+        icount_di,rcount_di,wcount_di=self.table_di.GetStatus()
+        icount_co,rcount_co,wcount_co=self.table_co.GetStatus()
+        icount_hr,rcount_hr,wcount_hr=self.table_hr.GetStatus()
+        icount_ir,rcount_ir,wcount_ir=self.table_ir.GetStatus()
+        icount=icount_di+icount_co+icount_hr+icount_ir
+        rcount=rcount_di+rcount_co+rcount_hr+rcount_ir
+        wcount=wcount_di+wcount_co+wcount_hr+wcount_ir
+        self.status_icount.setText('Items: %d' % icount)
+        self.status_rcount.setText('Reads: %d' % rcount)
+        self.status_wcount.setText('Writes: %d' % wcount)
+
+
         # Update logger
         self.conframe.updatelog()
 
@@ -289,7 +307,7 @@ class ServerUI(QMainWindow):
 argformatter=lambda prog: argparse.RawTextHelpFormatter(prog,max_help_position=54)
 parser=argparse.ArgumentParser(description=aboutstring,formatter_class=argformatter)
 parser.add_argument('-c','--comm',choices=['tcp', 'udp', 'serial'],help='set communication, default is tcp',dest='comm',default='tcp',type=str)
-parser.add_argument('-f','--framer',choices=['ascii', 'rtu', 'socket'],help='set framer, default depends on --comm',dest='framer',default='rtu',type=str)
+parser.add_argument('-f','--framer',choices=['ascii', 'rtu', 'socket'],help='set framer, default depends on --comm',dest='framer',default='socket',type=str)
 parser.add_argument('-H','--host',help='set host, default is 127.0.0.1',dest='host',default='127.0.0.1',type=str)
 parser.add_argument('-P','--port',help='set tcp/udp/serial port',dest='port',default='502',type=str)
 parser.add_argument('-b','--baudrate',help='set serial device baud rate',dest='baudrate',default=9600,type=int)

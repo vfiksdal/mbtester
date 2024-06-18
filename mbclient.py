@@ -228,7 +228,7 @@ if __name__ == "__main__":
     argformatter=lambda prog: argparse.RawTextHelpFormatter(prog,max_help_position=54)
     parser=argparse.ArgumentParser(description='MBTester Client',formatter_class=argformatter)
     parser.add_argument('-c','--comm',choices=['tcp', 'udp', 'serial'],help='set communication, default is tcp',dest='comm',default='tcp',type=str)
-    parser.add_argument('-f','--framer',choices=['ascii', 'rtu', 'socket'],help='set framer, default depends on --comm',dest='framer',default='rtu',type=str)
+    parser.add_argument('-f','--framer',choices=['ascii', 'rtu', 'socket'],help='set framer, default depends on --comm',dest='framer',default='socket',type=str)
     parser.add_argument('-s','--slaveid',help='set slave id',dest='slaveid',default=1,type=int)
     parser.add_argument('-o','--offset',help='address offset',dest='offset',default=-1,type=int)
     parser.add_argument('-l','--log',choices=['critical', 'error', 'warning', 'info', 'debug'],help='set log level, default is info',dest='log',default='info',type=str)

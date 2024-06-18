@@ -43,8 +43,8 @@ class ClientTableFrame(QFrame):
         layout=QVBoxLayout()
         layout.addWidget(self.tablewidget,1)
         self.setLayout(layout)
+        Utils.setMargins(layout)
         self.lock=threading.Lock()
-
         self.datablock=datablock
         self.worker=worker
         self.updates=[]
@@ -115,9 +115,28 @@ class ClientWorker():
         self.callback=callback
         self.reglist=[]
         self.backlog=[]
+        self.start=None
+        self.duration=0
+        self.rcount=0
+        self.wcount=0
+        self.lock=threading.Lock()
         for datablock in self.client.profile['datablocks']:
             for address in self.client.profile['datablocks'][datablock]:
                 self.reglist.append([datablock,address,None])
+
+    ##\brief Get status data
+    # \return itemcount,readcount,writecount,duration,interval progress,read progress
+    def GetStatus(self):
+        with self.lock:
+            if self.next and self.interval:
+                iprg=int((1-((self.next-time.time())/self.interval))*100)
+            else:
+                iprg=0
+            if len(self.backlog):
+                rprg=int((1-(len(self.backlog)/len(self.reglist)))*100)
+            else:
+                rprg=0
+            return len(self.backlog),self.rcount,self.wcount,self.duration,iprg,rprg
 
     ##\brief Change polling interval
     # \param Interval Polling interval in seconds
@@ -125,7 +144,15 @@ class ClientWorker():
         with self.lock:
             if self.interval!=Interval:
                 self.interval=Interval
-                self.next=time.time()
+                if Interval:
+                    self.next=time.time()
+                else:
+                    self.next=None
+
+    ##\brief Trigger an immidiate reading cycle
+    def Trigger(self):
+        with self.lock:
+            self.next=time.time()
 
     ##\brief Starts background thread
     def Start(self):
@@ -133,22 +160,32 @@ class ClientWorker():
         self.running=True
         self.interval=60
         self.next=time.time()
-        self.lock=threading.Lock()
         self.thread=threading.Thread(target=self.Worker)
         self.thread.start()
 
     ##\brief Background thread to read/write values
     def Worker(self):
         while self.running:
-            now=time.time()
             with self.lock:
-                if now>=self.next and len(self.backlog)==0:
+                now=time.time()
+                if self.next and now>=self.next and len(self.backlog)==0:
                     self.backlog.extend(self.reglist)
-                    self.next=now+self.interval
+                    self.start=now
+                    if self.interval:
+                        self.next=now+self.interval
+                    else:
+                        self.next=None
                 if len(self.backlog):
                     backlog=self.backlog[0]
                     self.backlog=self.backlog[1:]
+                    if backlog[2]:
+                        self.wcount+=1
+                    else:
+                        self.rcount+=1
                 else:
+                    if self.start:
+                        self.duration=(self.duration*3+(now-self.start))/4.0
+                        self.start=None
                     backlog=None
 
             if backlog:
@@ -207,29 +244,27 @@ class ClientUI(QMainWindow):
 
         # Add statusbar
         self.statusbar=QStatusBar()
-        self.status_progress=QProgressBar()
-        self.status_debug=QLineEdit()
-        self.status_info=QLineEdit()
-        self.status_warnings=QLineEdit()
-        self.status_errors=QLineEdit()
+        self.status_int_progress=QProgressBar()
+        self.status_read_progress=QProgressBar()
+        self.status_rcount=QLineEdit()
+        self.status_wcount=QLineEdit()
         self.status_queue=QLineEdit()
         self.status_duration=QLineEdit()
-        self.status_progress.setEnabled(False)
-        self.status_debug.setEnabled(False)
-        self.status_info.setEnabled(False)
-        self.status_warnings.setEnabled(False)
-        self.status_errors.setEnabled(False)
+        self.status_int_progress.setEnabled(False)
+        self.status_read_progress.setEnabled(False)
+        self.status_rcount.setEnabled(False)
+        self.status_wcount.setEnabled(False)
         self.status_queue.setEnabled(False)
         self.status_duration.setEnabled(False)
-        self.statusbar.addWidget(self.status_duration,1)
-        self.statusbar.addWidget(self.status_queue,1)
-        self.statusbar.addWidget(self.status_debug,1)
-        self.statusbar.addWidget(self.status_info,1)
-        self.statusbar.addWidget(self.status_warnings,1)
-        self.statusbar.addWidget(self.status_errors,1)
-        self.statusbar.addWidget(self.status_progress,1)
+        self.statusbar.addWidget(self.status_rcount)
+        self.statusbar.addWidget(self.status_wcount)
+        self.statusbar.addWidget(self.status_queue)
+        self.statusbar.addWidget(self.status_duration)
+        self.statusbar.addWidget(self.status_int_progress,1)
+        self.statusbar.addWidget(self.status_read_progress,1)
         self.setStatusBar(self.statusbar)
-        self.status_progress.setAlignment(Qt.AlignCenter)
+        self.status_int_progress.setAlignment(Qt.AlignCenter)
+        self.status_read_progress.setAlignment(Qt.AlignCenter)
         self.statusbar.setVisible(True)
         
         # Build treeview
@@ -250,7 +285,6 @@ class ClientUI(QMainWindow):
         self.treeview.clicked.connect(self.TreeviewClick)
         index=treemodel.indexFromItem(logitem)
         self.treeview.setCurrentIndex(index)
-        #self.treeview.setEnabled(False)
 
         # Load frames for registers
         self.table_di=ClientTableFrame(self.worker,'di')
@@ -325,10 +359,22 @@ class ClientUI(QMainWindow):
 
     ##\brief Timer event to update status and tranceivers in UI thread
     def Process(self):
+        # Update registers
         self.table_di.UpdateUI()
         self.table_co.UpdateUI()
         self.table_hr.UpdateUI()
         self.table_ir.UpdateUI()
+
+        # Update status bar
+        icount,rcount,wcount,duration,iprg,rprg=self.worker.GetStatus()
+        self.status_rcount.setText('Reads: %d' % rcount)
+        self.status_wcount.setText('Writes: %d' % wcount)
+        self.status_queue.setText('Queue: %d items' % icount)
+        self.status_duration.setText('Tr: %.3fms' % round(duration*1000,3))
+        self.status_int_progress.setValue(iprg)
+        self.status_read_progress.setValue(rprg)
+
+        # Update logs
         self.conframe.updatelog()
 
     ##\brief Creates menu bar
@@ -352,11 +398,18 @@ class ClientUI(QMainWindow):
         action_setinterval_1m=QAction('1 minute',self,checkable=True,checked=True)
         action_setinterval_1m.setStatusTip('Set polling interval to 1 minute')
         action_setinterval_1m.triggered.connect(lambda: self.worker.SetInterval(60))
+        action_setinterval_none=QAction('Disable',self,checkable=True,checked=False)
+        action_setinterval_none.setStatusTip('Disable automatic polling')
+        action_setinterval_none.triggered.connect(lambda: self.worker.SetInterval(None))
+        action_setinterval_now=QAction('Read now',self)
+        action_setinterval_now.setStatusTip('Trigger immidiate read-cycle')
+        action_setinterval_now.triggered.connect(lambda: self.worker.Trigger())
         action_setinterval=QActionGroup(self)
         action_setinterval.addAction(action_setinterval_1s)
         action_setinterval.addAction(action_setinterval_15s)
         action_setinterval.addAction(action_setinterval_30s)
         action_setinterval.addAction(action_setinterval_1m)
+        action_setinterval.addAction(action_setinterval_none)
         action_about=QAction('About '+application,self)
         action_about.triggered.connect(lambda: QMessageBox.about(self,'About','\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\n'+aboutstring+'\n\n\n'))
 
@@ -371,6 +424,9 @@ class ClientUI(QMainWindow):
         intmenu.addAction(action_setinterval_15s)
         intmenu.addAction(action_setinterval_30s)
         intmenu.addAction(action_setinterval_1m)
+        intmenu.addAction(action_setinterval_none)
+        intmenu.addSeparator()
+        intmenu.addAction(action_setinterval_now)
         helpmenu = QMenu("&Help", self)
         helpmenu.addAction(action_about)
         menubar.addMenu(filemenu)
@@ -397,7 +453,7 @@ class ClientUI(QMainWindow):
 argformatter=lambda prog: argparse.RawTextHelpFormatter(prog,max_help_position=54)
 parser=argparse.ArgumentParser(description=aboutstring,formatter_class=argformatter)
 parser.add_argument('-c','--comm',choices=['tcp', 'udp', 'serial'],help='set communication, default is tcp',dest='comm',default='tcp',type=str)
-parser.add_argument('-f','--framer',choices=['ascii', 'rtu', 'socket'],help='set framer, default depends on --comm',dest='framer',default='rtu',type=str)
+parser.add_argument('-f','--framer',choices=['ascii', 'rtu', 'socket'],help='set framer, default depends on --comm',dest='framer',default='socket',type=str)
 parser.add_argument('-s','--slaveid',help='set slave id',dest='slaveid',default=1,type=int)
 parser.add_argument('-o','--offset',help='address offset',dest='offset',default=-1,type=int)
 parser.add_argument('-H','--host',help='set host, default is 127.0.0.1',dest='host',default='127.0.0.1',type=str)

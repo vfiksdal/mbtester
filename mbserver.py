@@ -100,7 +100,7 @@ if __name__ == "__main__":
     argformatter=lambda prog: argparse.RawTextHelpFormatter(prog,max_help_position=54)
     parser=argparse.ArgumentParser(description='MBTester Client',formatter_class=argformatter)
     parser.add_argument('-c','--comm',choices=['tcp', 'udp', 'serial'],help='set communication, default is tcp',dest='comm',default='tcp',type=str)
-    parser.add_argument('-f','--framer',choices=['ascii', 'rtu', 'socket'],help='set framer, default depends on --comm',dest='framer',default='rtu',type=str)
+    parser.add_argument('-f','--framer',choices=['ascii', 'rtu', 'socket'],help='set framer, default depends on --comm',dest='framer',default='socket',type=str)
     parser.add_argument('-l','--log',choices=['critical', 'error', 'warning', 'info', 'debug'],help='set log level, default is info',dest='log',default='info',type=str)
     parser.add_argument('-H','--host',help='set host, default is 127.0.0.1',dest='host',default='127.0.0.1',type=str)
     parser.add_argument('-P','--port',help='set tcp/udp/serial port',dest='port',default='502',type=str)

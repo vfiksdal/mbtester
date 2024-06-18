@@ -49,6 +49,20 @@ class Utils():
                 if not 'value' in profile['datablocks'][datablock][register]: profile['datablocks'][datablock][register]['value']=0
         return profile
 
+    ##\brief Saves current profile to disk (With current values)
+    # \param profile Profile dictionary
+    # \param filename Filename to save as
+    def saveProfile(profile,filename):
+        if len(filename):
+            fd=open(filename,'w')
+            fd.write(json.dumps(profile,indent=4))
+            fd.close()
+
+    ##\brief Minimizes margins of a QT layout
+    # \param layout Layout to minimize
+    def setMargins(layout):
+        layout.setContentsMargins(0,0,0,0)
+
     ##\brief Counts number of 16-bit registers for datatype
     # \param profile The register block to evaluate
     # \return Number of registers for value
@@ -71,15 +85,6 @@ class Utils():
             if l%2==0: return int(l/2)
             else: return int(l/2+1)
         print('Sizing unknown datatype: '+str(profile['dtype']))
-
-    ##\brief Saves current profile to disk (With current values)
-    # \param profile Profile dictionary
-    # \param filename Filename to save as
-    def saveProfile(profile,filename):
-        if len(filename):
-            fd=open(filename,'w')
-            fd.write(json.dumps(profile,indent=4))
-            fd.close()
 
     ##\brief Encode scalar value to register values
     # \param profile Register profile
