@@ -53,11 +53,19 @@ class Utils():
     # \param profile The register block to evaluate
     # \return Number of registers for value
     def registersPerValue(profile):
-        if profile['dtype']=='float':   return 2
-        if profile['dtype']=='double':  return 4
+        if profile['dtype']=='float16': return 1
+        if profile['dtype']=='float32': return 2
+        if profile['dtype']=='float64': return 4
         if profile['dtype']=='uint32':  return 2
         if profile['dtype']=='uint16':  return 1
         if profile['dtype']=='uint8':   return 1
+        if profile['dtype']=='int32':   return 2
+        if profile['dtype']=='int16':   return 1
+        if profile['dtype']=='int8':    return 1
+        if profile['dtype']=='float':   return 2
+        if profile['dtype']=='double':  return 4
+        if profile['dtype']=='word':    return 1
+        if profile['dtype']=='int':     return 2
         if profile['dtype']=='string':
             l=len(profile['value'])
             if l%2==0: return int(l/2)
@@ -79,11 +87,19 @@ class Utils():
     # \return List of register values
     def encodeRegister(profile,value):
         builder = BinaryPayloadBuilder(byteorder=profile['bo'], wordorder=profile['wo'])
-        if profile['dtype']=='float':       builder.add_32bit_float(value)
-        elif profile['dtype']=='double':    builder.add_64bit_float(value)
+        if profile['dtype']=='float16':     builder.add_16bit_float(value)
+        elif profile['dtype']=='float32':   builder.add_32bit_float(value)
+        elif profile['dtype']=='float64':   builder.add_64bit_float(value)
         elif profile['dtype']=='uint32':    builder.add_32bit_uint(value)
         elif profile['dtype']=='uint16':    builder.add_16bit_uint(value)
         elif profile['dtype']=='uint8':     builder.add_8bit_uint(value)
+        elif profile['dtype']=='int32':     builder.add_32bit_int(value)
+        elif profile['dtype']=='int16':     builder.add_16bit_int(value)
+        elif profile['dtype']=='int8':      builder.add_8bit_int(value)
+        elif profile['dtype']=='float':     builder.add_32bit_float(value)
+        elif profile['dtype']=='double':    builder.add_64bit_float(value)
+        elif profile['dtype']=='word':      builder.add_16bit_int(value)
+        elif profile['dtype']=='int':       builder.add_32bit_int(value)
         elif profile['dtype']=='string':    builder.add_string(value)
         else: print('Encoding unknown datatype: '+str(profile['dtype']))
         return builder.to_registers()
@@ -95,11 +111,19 @@ class Utils():
     def decodeRegister(profile,register):
         decoder = BinaryPayloadDecoder.fromRegisters(register, byteorder=profile['bo'], wordorder=profile['wo'])
         value = None
-        if profile['dtype']=='float':       value = decoder.decode_32bit_float()
-        elif profile['dtype']=='double':    value = decoder.decode_64bit_float()
+        if profile['dtype']=='float16':     value = decoder.decode_16bit_float()
+        elif profile['dtype']=='float32':   value = decoder.decode_32bit_float()
+        elif profile['dtype']=='float64':   value = decoder.decode_64bit_float()
         elif profile['dtype']=='uint32':    value = decoder.decode_32bit_uint()
         elif profile['dtype']=='uint16':    value = decoder.decode_16bit_uint()
         elif profile['dtype']=='uint8':     value = decoder.decode_8bit_uint()
+        elif profile['dtype']=='int32':     value = decoder.decode_32bit_int()
+        elif profile['dtype']=='int16':     value = decoder.decode_16bit_int()
+        elif profile['dtype']=='int8':      value = decoder.decode_8bit_int()
+        elif profile['dtype']=='float':     value = decoder.decode_32bit_float()
+        elif profile['dtype']=='double':    value = decoder.decode_64bit_float()
+        elif profile['dtype']=='word':      value = decoder.decode_16bit_int()
+        elif profile['dtype']=='int':       value = decoder.decode_32bit_int()
         elif profile['dtype']=='string':    value = decoder.decode_string(len(profile['value'])).decode('utf-8')
         else: print('Decoding unknown datatype: '+str(profile['dtype']))
         return value

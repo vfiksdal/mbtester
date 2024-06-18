@@ -14,9 +14,10 @@
             "1": {"dsc": "8bit int","dtype": "uint8","value": 123},
             "2": {"dsc": "16bit int","dtype": "uint16","value": 12345},
             "3": {"dsc": "32bit int","dtype": "uint32","value": 123456789},
-            "5": {"dsc": "Single-precision float","dtype": "float","value": 1234.456789},
-            "7": {"dsc": "Double-precision float","dtype": "double","value": 1234.456789},
-            "11": {"dsc": "String","dtype": "string","value": "Testing MODBUS string register value"}
+            "5": {"dsc": "Half-precision float","dtype": "float16","value": 1234.456789},
+            "6": {"dsc": "Single-precision float","dtype": "float32","value": 1234.456789},
+            "8": {"dsc": "Double-precision float","dtype": "float64","value": 1234.456789},
+            "12": {"dsc": "String","dtype": "string","value": "Testing MODBUS string register value"}
         },
         "ir": {}
     }

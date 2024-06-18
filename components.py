@@ -134,10 +134,19 @@ class SetValue(QDialog):
     ##\brief Validates the user input
     def Set(self):
         try:
-            if self.register['dtype']=='float':  self.value=float(self.valueedit.text())
-            if self.register['dtype']=='double': self.value=float(self.valueedit.text())
-            if self.register['dtype']=='uint32': self.value=int(self.valueedit.text())
-            if self.register['dtype']=='uint16': self.value=int(self.valueedit.text())
+            if self.register['dtype']=='float16':   self.value=float(self.valueedit.text())
+            if self.register['dtype']=='float32':   self.value=float(self.valueedit.text())
+            if self.register['dtype']=='float64':   self.value=float(self.valueedit.text())
+            if self.register['dtype']=='uint32':    self.value=int(self.valueedit.text())
+            if self.register['dtype']=='uint16':    self.value=int(self.valueedit.text())
+            if self.register['dtype']=='uint8':     self.value=int(self.valueedit.text())
+            if self.register['dtype']=='int32':     self.value=int(self.valueedit.text())
+            if self.register['dtype']=='int16':     self.value=int(self.valueedit.text())
+            if self.register['dtype']=='int8':      self.value=int(self.valueedit.text())
+            if self.register['dtype']=='float':     self.value=float(self.valueedit.text())
+            if self.register['dtype']=='double':    self.value=float(self.valueedit.text())
+            if self.register['dtype']=='word':      self.value=int(self.valueedit.text())
+            if self.register['dtype']=='int':       self.value=int(self.valueedit.text())
             if self.register['dtype']=='string':
                 length=len(self.register['value'])
                 self.value=self.valueedit.text()[:length]
@@ -178,7 +187,6 @@ class Connect(QDialog):
         self.slaveidedit=QLineEdit(str('1'))
         self.offsetlabel=QLabel('Register offset')
         self.offsetedit=QLineEdit(str('-1'))
-
         self.buttons=QDialogButtonBox(self)
         self.buttons.setStandardButtons(QDialogButtonBox.Cancel|QDialogButtonBox.Ok)
         vlayout=QVBoxLayout()

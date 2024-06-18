@@ -16,10 +16,10 @@
             "3": {"dsc": "16bit int big endian","bo": ">","dtype": "uint16","value": 12345},
             "4": {"dsc": "32bit int little endian","bo": "<","wo": "<","dtype": "uint32","value": 123456789},
             "6": {"dsc": "32bit int big endian","bo": ">","wo": ">","dtype": "uint32","value": 123456789},
-            "8": {"dsc": "Single-precision float little endian","bo": "<","wo": "<","dtype": "float","value": 1234.456789},
-            "10": {"dsc": "Single-precision float big endian","bo": ">","wo": ">","dtype": "float","value": 1234.456789},
-            "12": {"dsc": "Double-precision float little endian","bo": "<","wo": "<","dtype": "double","value": 1234.456789},
-            "16": {"dsc": "Double-precision float big endian","bo": ">","wo": ">","dtype": "double","value": 1234.456789},
+            "8": {"dsc": "Single-precision float little endian","bo": "<","wo": "<","dtype": "float32","value": 1234.456789},
+            "10": {"dsc": "Single-precision float big endian","bo": ">","wo": ">","dtype": "float32","value": 1234.456789},
+            "12": {"dsc": "Double-precision float little endian","bo": "<","wo": "<","dtype": "float64","value": 1234.456789},
+            "16": {"dsc": "Double-precision float big endian","bo": ">","wo": ">","dtype": "float64","value": 1234.456789},
             "20": {"dsc": "String","bo": ">","wo": ">","dtype": "string","value": "Testing MODBUS string register value"}
         },
         "ir": {}
