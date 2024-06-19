@@ -19,7 +19,7 @@ from mbclient import *
 
 # Simple identification
 appname='MBTester Client'
-appversion='0.1'
+appversion='0.1.2'
 application=appname+' '+appversion
 aboutstring=application+'\n'
 aboutstring+='GUI client for MODBUS Testing\n'
@@ -145,8 +145,10 @@ class ClientWorker():
             if self.interval!=Interval:
                 self.interval=Interval
                 if Interval:
+                    logging.info('Changing polling interval to '+str(Interval)+'s')
                     self.next=time.time()
                 else:
+                    logging.info('Disabling polling interval')
                     self.next=None
 
     ##\brief Trigger an immidiate reading cycle
@@ -169,6 +171,7 @@ class ClientWorker():
             with self.lock:
                 now=time.time()
                 if self.next and now>=self.next and len(self.backlog)==0:
+                    logging.info('Starting new read cycle')
                     self.backlog.extend(self.reglist)
                     self.start=now
                     if self.interval:
@@ -185,6 +188,7 @@ class ClientWorker():
                 else:
                     if self.start:
                         self.duration=(self.duration*3+(now-self.start))/4.0
+                        logging.info('Cycle completed in %.3fms' % round(self.duration*1000,3))
                         self.start=None
                     backlog=None
 
@@ -206,6 +210,7 @@ class ClientWorker():
     # \param address Register address to read
     def Read(self,datablock,address):
         with self.lock:
+            logging.info('Reading register '+datablock+'['+str(address)+']')
             self.backlog.append([datablock,address,None])
 
     ##\brief Write a register value to server
@@ -214,6 +219,7 @@ class ClientWorker():
     # \param value Value to write
     def Write(self,datablock,address,value):
         with self.lock:
+            logging.info('Writing register '+datablock+'['+str(address)+']='+str(value))
             self.backlog.append([datablock,address,value])
 
     ##\brief Stop all running processes
@@ -241,6 +247,10 @@ class ClientUI(QMainWindow):
                 logging.error('User aborted')
                 sys.exit()
         self.worker=ClientWorker(self.client,self.Update)
+        self.conframe.Clear()
+        for line in aboutstring.split('\n'):
+            self.conframe.AddText(line)
+        self.conframe.AddText('')
 
         # Add statusbar
         self.statusbar=QStatusBar()
@@ -332,7 +342,6 @@ class ClientUI(QMainWindow):
     def closeEvent(self, event):
         self.timer.stop()
         logging.info('Shutting down connection')
-        self.conframe.updatelog()
         if self.worker: self.worker.Close()
         if self.client: self.client.Close()
         super().close()
@@ -373,9 +382,6 @@ class ClientUI(QMainWindow):
         self.status_duration.setText('Tr: %.3fms' % round(duration*1000,3))
         self.status_int_progress.setValue(iprg)
         self.status_read_progress.setValue(rprg)
-
-        # Update logs
-        self.conframe.updatelog()
 
     ##\brief Creates menu bar
     def CreateMenubar(self):

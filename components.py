@@ -8,6 +8,7 @@
 from PyQt5.QtWidgets import QDialog, QDialogButtonBox, QComboBox, QLabel, QLineEdit, QListWidget, QPushButton, QVBoxLayout, QMessageBox, QFrame, QFileDialog
 from PyQt5.Qt import QStandardItem
 from PyQt5.QtGui import QFont, QColor
+from PyQt5.QtCore import QTimer
 from pymodbus import pymodbus_apply_logging_config
 import datetime
 import serial.tools.list_ports
@@ -20,12 +21,12 @@ class ConFrame(QFrame):
     # \param args Parsed commandline arguments
     def __init__(self,args):
         super().__init__()
-        self.handler=LogHandler(self)
+        self.handler=LogHandler()
         self.listbox=QListWidget()
         self.listbox.setFont(QFont('cascadia mono'))
         self.dropdown=QComboBox()
         self.clearbutton=QPushButton('Clear logs')
-        self.clearbutton.clicked.connect(self.clearlog)
+        self.clearbutton.clicked.connect(self.Clear)
         self.savebutton=QPushButton('Save log to file')
         self.savebutton.clicked.connect(self.savelog)
         self.messages=[]
@@ -48,6 +49,12 @@ class ConFrame(QFrame):
         self.setLayout(layout)
         Utils.setMargins(layout)
 
+        # Use a timer to process data from the queue
+        self.timer=QTimer()
+        self.timer.timeout.connect(self.Update)
+        self.timer.start(250)
+
+
     ##\brief Called when loglevel has changed
     # \param index New loglevel
     def currentIndexChanged(self,index):
@@ -57,9 +64,14 @@ class ConFrame(QFrame):
         logging.basicConfig(level=level,handlers=[self.handler])
 
     ##\brief Clear existing log
-    def clearlog(self):
+    def Clear(self):
         self.messages=[]
         self.listbox.clear()
+
+    ##\brief Manually adds a text string
+    # \param text Text string to add
+    def AddText(self,text):
+        self.listbox.addItem(text)
 
     ##\brief Saves log output to file
     def savelog(self):
@@ -72,27 +84,29 @@ class ConFrame(QFrame):
                 f.write(text)
                 f.close()
 
-    def updatelog(self):
+    ##\brief Updates GUI with added messages
+    def Update(self):
         if self.handler:
             messages=self.handler.messages
             self.handler.messages=[]
             for message in messages:
-                self.listbox.addItem(message)
+                if message.levelno==logging.ERROR or message.levelno==logging.CRITICAL:
+                    QMessageBox.critical(self,'Error',str(message.msg))
+                s='%s  %-*s %s' % (datetime.datetime.now().strftime('%c'),8,message.levelname,message.msg)
+                self.listbox.addItem(s)
             if len(messages):
                 self.listbox.scrollToBottom()
 
 ##\class LogHandler
 # \brief Custom logging handler for GUI output
 class LogHandler(logging.Handler):
-    def __init__(self,conframe,limit=1024):
-        self.conframe=conframe
-        self.limit=limit
+    ##\brief Initializes handler
+    def __init__(self):
         self.messages=[]
         super().__init__()
 
     def emit(self, record):
-        s='%s  %-*s %s' % (datetime.datetime.now().strftime('%c'),8,record.levelname,record.msg)
-        self.messages.append(s)
+        self.messages.append(record)
 
 
 ##\class StandardItem

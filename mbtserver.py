@@ -19,7 +19,7 @@ from mbserver import *
 
 # Simple identification
 appname='MBTester Server'
-appversion='0.1'
+appversion='0.1.2'
 application=appname+' '+appversion
 aboutstring=application+'\n'
 aboutstring+='GUI server for MODBUS Testing\n'
@@ -144,6 +144,10 @@ class ServerUI(QMainWindow):
             else:
                 logging.error('User aborted')
                 sys.exit()
+        self.conframe.Clear()
+        for line in aboutstring.split('\n'):
+            self.conframe.AddText(line)
+        self.conframe.AddText('')
 
         # Add statusbar
         self.statusbar=QStatusBar()
@@ -259,10 +263,6 @@ class ServerUI(QMainWindow):
         self.status_icount.setText('Items: %d' % icount)
         self.status_rcount.setText('Reads: %d' % rcount)
         self.status_wcount.setText('Writes: %d' % wcount)
-
-
-        # Update logger
-        self.conframe.updatelog()
 
     ##\brief Creates menu bar
     def CreateMenubar(self):
