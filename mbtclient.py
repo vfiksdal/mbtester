@@ -187,7 +187,9 @@ class ClientWorker():
                         self.rcount+=1
                 else:
                     if self.start:
-                        self.duration=(self.duration*3+(now-self.start))/4.0
+                        duration=now-self.start
+                        if self.duration==0: self.duration=duration
+                        self.duration=(self.duration*3+(duration))/4.0
                         logging.info('Cycle completed in %.3fms' % round(self.duration*1000,3))
                         self.start=None
                     backlog=None
@@ -274,7 +276,9 @@ class ClientUI(QMainWindow):
         self.statusbar.addWidget(self.status_read_progress,1)
         self.setStatusBar(self.statusbar)
         self.status_int_progress.setAlignment(Qt.AlignCenter)
+        self.status_int_progress.setTextVisible(True)
         self.status_read_progress.setAlignment(Qt.AlignCenter)
+        self.status_read_progress.setTextVisible(True)
         self.statusbar.setVisible(True)
         
         # Build treeview
@@ -380,8 +384,18 @@ class ClientUI(QMainWindow):
         self.status_wcount.setText('Writes: %d' % wcount)
         self.status_queue.setText('Queue: %d items' % icount)
         self.status_duration.setText('Tr: %.3fms' % round(duration*1000,3))
-        self.status_int_progress.setValue(iprg)
-        self.status_read_progress.setValue(rprg)
+        if iprg:
+            self.status_int_progress.setValue(iprg)
+            self.status_int_progress.setFormat('Waiting for next read cycle '+str(iprg)+'%')
+        else:
+            self.status_int_progress.setValue(iprg)
+            self.status_int_progress.setFormat('Automatic polling disabled')
+        if rprg:
+            self.status_read_progress.setValue(rprg)
+            self.status_read_progress.setFormat('Executing read cycle '+str(rprg)+'%')
+        else:
+            self.status_read_progress.setValue(rprg)
+            self.status_read_progress.setFormat('Read cycle completed')
 
     ##\brief Creates menu bar
     def CreateMenubar(self):

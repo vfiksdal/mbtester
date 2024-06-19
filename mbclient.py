@@ -59,13 +59,10 @@ class AsyncClientObject():
             if datablock=='hr': response = await self.client.read_holding_registers(registeraddress,count,self.slaveid)
             if datablock=='ir': response = await self.client.read_input_registers(registeraddress,count,self.slaveid)
         except ModbusException as exc:
-            print(f"Received ModbusException({exc}) from library")
+            logging.error('ModbusException: '+str(exc))
             return None
-        if response.isError():
-            print(f"Received Modbus library error({response})")
-            return None
-        if response and isinstance(response, ExceptionResponse):
-            print(f"Received Modbus library exception ({response})")
+        if response.isError() or isinstance(response, ExceptionResponse):
+            logging.warning(str(response))
             return None
         return Utils.decodeRegister(registerdata,response.registers)
 
@@ -87,14 +84,11 @@ class AsyncClientObject():
             if datablock=='hr': response = await self.client.write_registers(registeraddress,values,self.slaveid)
             if datablock=='ir': pass
         except ModbusException as exc:
-            print(f"Received ModbusException({exc}) from library")
-            return False
-        if response.isError():
-            print(f"Received Modbus library error({response})")
-            return False
-        if response and isinstance(response, ExceptionResponse):
-            print(f"Received Modbus library exception ({response})")
-            return False
+            logging.error('ModbusException: '+str(exc))
+            return None
+        if response.isError() or isinstance(response, ExceptionResponse):
+            logging.warning(str(response))
+            return None
         return True
 
     ##\brief Read all registers from the server
@@ -164,13 +158,10 @@ class ClientObject():
             if datablock=='hr': response = self.client.read_holding_registers(registeraddress,count,self.slaveid)
             if datablock=='ir': response = self.client.read_input_registers(registeraddress,count,self.slaveid)
         except ModbusException as exc:
-            print(f"Received ModbusException({exc}) from library")
+            logging.error('ModbusException: '+str(exc))
             return None
-        if response.isError():
-            print(f"Received Modbus library error({response})")
-            return None
-        if response and isinstance(response, ExceptionResponse):
-            print(f"Received Modbus library exception ({response})")
+        if response.isError() or isinstance(response, ExceptionResponse):
+            logging.warning(str(response))
             return None
         return Utils.decodeRegister(registerdata,response.registers)
 
@@ -192,14 +183,11 @@ class ClientObject():
             if datablock=='hr': response = self.client.write_registers(registeraddress,values,self.slaveid)
             if datablock=='ir': pass
         except ModbusException as exc:
-            print(f"Received ModbusException({exc}) from library")
-            return False
-        if response.isError():
-            print(f"Received Modbus library error({response})")
-            return False
-        if response and isinstance(response, ExceptionResponse):
-            print(f"Received Modbus library exception ({response})")
-            return False
+            logging.error('ModbusException: '+str(exc))
+            return None
+        if response.isError() or isinstance(response, ExceptionResponse):
+            logging.warning(str(response))
+            return None
         return True
 
     ##\brief Read all registers from the server
