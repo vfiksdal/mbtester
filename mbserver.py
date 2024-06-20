@@ -52,7 +52,7 @@ class AsyncServerObject():
         if args.comm=='udp':
             self.server = await StartAsyncUdpServer(context=self.mastercontext,identity=self.identity,address=(args.host,args.port),framer=args.framer,timeout=args.timeout)
         if args.comm=='serial':
-            self.server = await StartAsyncSerialServer(context=self.mastercontext,identity=self.identity,port=args.port,baudrate=args.baudrate,bytesize=8,parity=args.parity,stopbits=1,framer=args.framer,timeout=args.timeout)
+            self.server = await StartAsyncSerialServer(context=self.mastercontext,identity=self.identity,port=args.serial,baudrate=args.baudrate,bytesize=8,parity=args.parity,stopbits=1,framer=args.framer,timeout=args.timeout)
         self.running=False
 
     ##\brief Stops the modbus server
@@ -76,7 +76,7 @@ class ServerObject(AsyncServerObject):
         if args.comm=='udp':
             self.server = StartUdpServer(context=self.mastercontext,identity=self.identity,address=(args.host,args.port),framer=args.framer,timeout=args.timeout)
         if args.comm=='serial':
-            self.server = StartSerialServer(context=self.mastercontext,identity=self.identity,port=args.port,baudrate=args.baudrate,bytesize=8,parity=args.parity,stopbits=1,framer=args.framer,timeout=args.timeout)
+            self.server = StartSerialServer(context=self.mastercontext,identity=self.identity,port=args.serial,baudrate=args.baudrate,bytesize=8,parity=args.parity,stopbits=1,framer=args.framer,timeout=args.timeout)
         self.running=False
 
     ##\brief Starts the modbus server in a background thread
@@ -97,17 +97,21 @@ class ServerObject(AsyncServerObject):
 
 if __name__ == "__main__":
     # Parse command line options
+    aboutstring=Utils.getAppName()+' Client '+Utils.getAppVersion()+'\n'
+    aboutstring+='Server for MODBUS Testing\n'
+    aboutstring+='Vegard Fiksdal(C)2024'
     argformatter=lambda prog: argparse.RawTextHelpFormatter(prog,max_help_position=54)
-    parser=argparse.ArgumentParser(description='MBTester Client',formatter_class=argformatter)
+    parser=argparse.ArgumentParser(description=aboutstring,formatter_class=argformatter)
     parser.add_argument('-c','--comm',choices=['tcp', 'udp', 'serial'],help='set communication, default is tcp',dest='comm',default='tcp',type=str)
-    parser.add_argument('-f','--framer',choices=['ascii', 'rtu', 'socket'],help='set framer, default depends on --comm',dest='framer',default='socket',type=str)
-    parser.add_argument('-l','--log',choices=['critical', 'error', 'warning', 'info', 'debug'],help='set log level, default is info',dest='log',default='info',type=str)
+    parser.add_argument('-f','--framer',choices=['ascii', 'rtu', 'socket'],help='set framer, default is rtu',dest='framer',default='rtu',type=str)
     parser.add_argument('-H','--host',help='set host, default is 127.0.0.1',dest='host',default='127.0.0.1',type=str)
-    parser.add_argument('-P','--port',help='set tcp/udp/serial port',dest='port',default='502',type=str)
+    parser.add_argument('-P','--port',help='set tcp/udp network port',dest='port',default='502',type=str)
+    parser.add_argument('-S','--serial',help='set serial port',dest='serial',default='COM1',type=str)
     parser.add_argument('-b','--baudrate',help='set serial device baud rate',dest='baudrate',default=9600,type=int)
     parser.add_argument('-x','--parity',choices=['O', 'E', 'N'],help='set serial device parity',dest='parity',default='N',type=str)
     parser.add_argument('-t','--timeout',help='set request timeout',dest='timeout',default=1,type=int)
     parser.add_argument('-p','--profile',help='modbus register profile to serve',dest='profile',default='',type=str)
+    parser.add_argument('-l','--log',choices=['critical', 'error', 'warning', 'info', 'debug'],help='set log level, default is info',dest='log',default='info',type=str)
     args = parser.parse_args()
 
     # Check for profile
@@ -124,6 +128,10 @@ if __name__ == "__main__":
     logging.basicConfig(level=level,stream=sys.stdout,format='%(asctime)s %(levelname)s\t%(message)s')
     pymodbus_apply_logging_config(args.log)
     debug = (args.log=='DEBUG')
+
+    # Present options
+    print(aboutstring+'\n')
+    print(Utils.reportConfig(args))
 
     # Run async server
     server=AsyncServerObject(args)

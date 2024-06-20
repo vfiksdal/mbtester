@@ -11,6 +11,16 @@ import json,logging,sys,os
 ##\class Utils
 # \brief Utilities for loading profiles, handling register values etc
 class Utils():
+    ##\brief Get application name
+    # \return MBTester
+    def getAppName():
+        return 'MBTester'
+
+    ##\brief Get application version
+    # \return Current version as a string
+    def getAppVersion():
+        return '0.2.0'
+
     ##\brief Get path of application
     # \return Application path as a string
     def getPath():
@@ -77,6 +87,32 @@ class Utils():
             fd=open(filename,'w')
             fd.write(json.dumps(profile,indent=4))
             fd.close()
+
+    ##\brief Reports configuration
+    # \param args Commandline arguments to report
+    # \return Configuration report as a string
+    def reportConfig(args):
+        s=''
+        s+='%-*s: %s\n' % (30,'Communication interface',args.comm.upper())
+        s+='%-*s: %s\n' % (30,'MODBUS framer',args.framer.upper())
+        s+='%-*s: %s\n' % (30,'MODBUS profile',os.path.basename(args.profile))
+        if args.comm=='serial':
+            s+='%-*s: %s\n' % (30,'Serial port',args.serial)
+            s+='%-*s: %s\n' % (30,'Baudrate',args.baudrate)
+            s+='%-*s: %s\n' % (30,'Parity',Utils.getParityName(args.parity))
+        else:
+            s+='%-*s: %s\n' % (30,'Network host',args.host)
+            s+='%-*s: %s\n' % (30,'Network port',args.port)
+        return s
+
+    ##\brief Get name of parity setting (Eg. E=Even)
+    # \param argument Parity commandline argument
+    # \return Name of parity setting
+    def getParityName(argument):
+        if argument=='N': return 'None'
+        if argument=='E': return 'Even'
+        if argument=='O': return 'Odd'
+        return 'Error'
 
     ##\brief Minimizes margins of a QT layout
     # \param layout Layout to minimize
@@ -151,8 +187,11 @@ class Utils():
         elif profile['dtype']=='double':    value = decoder.decode_64bit_float()
         elif profile['dtype']=='word':      value = decoder.decode_16bit_int()
         elif profile['dtype']=='int':       value = decoder.decode_32bit_int()
-        elif profile['dtype']=='bit':       value = decoder.decode_bits()
-        elif profile['dtype']=='string':    value = decoder.decode_string(len(profile['value'])).decode('utf-8')
+        elif profile['dtype']=='bit':
+            value = decoder.decode_bits()
+            if len(value)>1: value=value[0]
+        elif profile['dtype']=='string':
+            value = decoder.decode_string(len(profile['value'])).decode('utf-8')
         else: logging.error('Decoding unknown datatype: '+str(profile['dtype']))
         return value
 

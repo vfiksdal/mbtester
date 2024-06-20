@@ -166,14 +166,17 @@ class Connect(QDialog):
         super(Connect,self).__init__(None)
         self.setWindowTitle("MODBUS Connection")
         self.resize(500,400)
+        if server:
+            args.slaveid=0
+            args.offset=0
         self.args=args
         self.profilelist=QComboBox()
         self.commlist=QComboBox()
         self.framerlist=QComboBox()
         self.hostlabel=QLabel('Host address')
-        self.hostedit=QLineEdit(str('127.0.0.1'))
+        self.hostedit=QLineEdit(str(args.host))
         self.nportlabel=QLabel('Network port')
-        self.nportedit=QLineEdit(str('502'))
+        self.nportedit=QLineEdit(str(args.port))
         self.sportlabel=QLabel('Serial port')
         self.sportlist=QComboBox()
         self.baudlabel=QLabel('Baudrate')
@@ -183,9 +186,9 @@ class Connect(QDialog):
         self.flowlabel=QLabel('Flowcontrol')
         self.flowlist=QComboBox()
         self.slaveidlabel=QLabel('Slave ID')
-        self.slaveidedit=QLineEdit(str('1'))
+        self.slaveidedit=QLineEdit(str(args.slaveid))
         self.offsetlabel=QLabel('Register offset')
-        self.offsetedit=QLineEdit(str('-1'))
+        self.offsetedit=QLineEdit(str(args.offset))
         self.buttons=QDialogButtonBox(self)
         self.buttons.setStandardButtons(QDialogButtonBox.Cancel|QDialogButtonBox.Ok)
         vlayout=QVBoxLayout()
@@ -223,20 +226,23 @@ class Connect(QDialog):
         vlayout.addWidget(QLabel(''),1)
         vlayout.addWidget(self.buttons)
         self.setLayout(vlayout)
-        self.port=''
         self.buttons.accepted.connect(self.Open)
         self.buttons.rejected.connect(self.reject)
 
         # Enumerate profiles
+        default=0
         self.profiles=Utils.listProfiles()
         for profile in self.profiles:
+            if os.path.abspath(args.profile).upper()==profile.upper(): default=self.profilelist.count()
             self.profilelist.addItem(os.path.basename(profile)[:-5])
+        self.profilelist.setCurrentIndex(default)
 
         # Enumerate ports
         default=0
         ports=serial.tools.list_ports.comports()
         for port, desc, hwid in sorted(ports):
             logging.debug("Enumerating {}={} [{}]".format(port,desc,hwid))
+            if args.serial.upper()==port.upper(): default=self.sportlist.count()
             self.sportlist.addItem("{}:\t{}".format(port,desc))
         self.sportlist.setCurrentIndex(default)
 
@@ -258,17 +264,30 @@ class Connect(QDialog):
         # Set up dialog
         self.show()
         self.commlist.currentIndexChanged.connect(self.commChanged)
-        self.commChanged(0)
+        self.commChanged(self.commlist.currentIndex())
+        self.setDefault(self.commlist,args.comm)
+        self.setDefault(self.framerlist,args.framer)
+        self.setDefault(self.baudlist,args.baudrate)
+        self.setDefault(self.paritylist,Utils.getParityName(args.parity))
+
+
+    ##\brief Set dropdown selection to a default value
+    # \param argument Desired default value
+    def setDefault(self,dropdown,argument):
+        for i in range(dropdown.count()):
+            if dropdown.itemText(i).upper()==str(argument).upper():
+                dropdown.setCurrentIndex(i)
 
     ##\brief Rearranges the dialog according the users choice of interface
     # \param index Index om the selected communication interface
     def commChanged(self,index):
+        # Rearrange dialog
+        framer=self.framerlist.currentText()
         self.framerlist.clear()
         is_serial=(self.commlist.itemText(index)=='Serial')
         if not is_serial: self.framerlist.addItem('Socket')
         self.framerlist.addItem('RTU')
         self.framerlist.addItem('ASCII')
-        self.framerlist.setCurrentIndex(0)
         self.hostlabel.setVisible(not is_serial)
         self.hostedit.setVisible(not is_serial)
         self.nportlabel.setVisible(not is_serial)
@@ -281,6 +300,9 @@ class Connect(QDialog):
         self.paritylist.setVisible(is_serial)
         self.flowlabel.setVisible(is_serial)
         self.flowlist.setVisible(is_serial)
+
+        # Change back to original framer if applicable
+        self.setDefault(self.framerlist,framer)
 
     ##\brief Attempt to start a connection with the current selection
     def Open(self):
@@ -301,7 +323,7 @@ class Connect(QDialog):
                 # Parse serial port name
                 port=self.sportlist.currentText()
                 if port.find(':')>0: port=port[:port.find(':')]
-                self.args.port=port
+                self.args.serial=port
 
                 # Collect other data
                 self.args.baudrate=int(self.baudlist.currentText())
