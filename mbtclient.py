@@ -17,12 +17,6 @@ from PyQt5.QtCore import Qt, QTimer
 from components import *
 from mbclient import *
 
-# Simple identification
-application=Utils.getAppName()+' Client '+Utils.getAppVersion()
-aboutstring=application+'\n'
-aboutstring+='GUI client for MODBUS Testing\n'
-aboutstring+='Vegard Fiksdal(C)2024'
-
 ##\class ClientTableFrame
 # \brief Table to hold and interact with a modbus register block
 class ClientTableFrame(QFrame):
@@ -244,7 +238,7 @@ class ClientUI(QMainWindow):
         self.client=None
         self.conframe=ConFrame(args)
         while(True):
-            if Connect(args,False).exec_()!=0:
+            if Connect(args).exec_()!=0:
                 self.client=ClientObject(args)
                 if self.client.Connect(): break
             else:
@@ -473,25 +467,14 @@ class ClientUI(QMainWindow):
         return filename
 
 
-# Parse command line options
-argformatter=lambda prog: argparse.RawTextHelpFormatter(prog,max_help_position=54)
-parser=argparse.ArgumentParser(description=aboutstring,formatter_class=argformatter)
-parser.add_argument('-c','--comm',choices=['tcp', 'udp', 'serial'],help='set communication, default is tcp',dest='comm',default='tcp',type=str)
-parser.add_argument('-f','--framer',choices=['ascii', 'rtu', 'socket'],help='set framer, default is rtu',dest='framer',default='rtu',type=str)
-parser.add_argument('-s','--slaveid',help='set slave id',dest='slaveid',default=1,type=int)
-parser.add_argument('-o','--offset',help='address offset',dest='offset',default=-1,type=int)
-parser.add_argument('-H','--host',help='set host, default is 127.0.0.1',dest='host',default='127.0.0.1',type=str)
-parser.add_argument('-P','--port',help='set tcp/udp network port',dest='port',default='502',type=str)
-parser.add_argument('-S','--serial',help='set serial port',dest='serial',default='COM1',type=str)
-parser.add_argument('-b','--baudrate',help='set serial device baud rate',dest='baudrate',default=9600,type=int)
-parser.add_argument('-x','--parity',choices=['O', 'E', 'N'],help='set serial device parity',dest='parity',default='N',type=str)
-parser.add_argument('-i','--interval',help='set read interval in seconds',dest='interval',default=10,type=float)
-parser.add_argument('-t','--timeout',help='set request timeout',dest='timeout',default=1,type=int)
-parser.add_argument('-p','--profile',help='modbus register profile to serve',dest='profile',default='',type=str)
-parser.add_argument('-l','--log',choices=['critical', 'error', 'warning', 'info', 'debug'],help='set log level, default is info',dest='log',default='info',type=str)
-args = parser.parse_args()
+# Simple identification
+application=Utils.getAppName()+' Client '+Utils.getAppVersion()
+aboutstring=application+'\n'
+aboutstring+='GUI client for MODBUS Testing\n'
+aboutstring+='Vegard Fiksdal(C)2024'
 
 # Load application window and start application
+args=Utils.parseArguments(aboutstring,-1)
 app=QApplication(sys.argv)
 window=ClientUI(args)
 app.exec()

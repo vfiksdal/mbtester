@@ -162,17 +162,16 @@ class Connect(QDialog):
     ##\brief Initializes the dialog
     # \param args Parsed commandline arguments
     # \param server True for server connection, False for client
-    def __init__(self,args,server):
+    def __init__(self,args):
         super(Connect,self).__init__(None)
         self.setWindowTitle("MODBUS Connection")
         self.resize(500,400)
-        if server:
-            args.slaveid=0
-            args.offset=0
         self.args=args
         self.profilelist=QComboBox()
         self.commlist=QComboBox()
         self.framerlist=QComboBox()
+        self.slaveidedit=QLineEdit(str(args.slaveid))
+        self.offsetedit=QLineEdit(str(args.offset))
         self.hostlabel=QLabel('Host address')
         self.hostedit=QLineEdit(str(args.host))
         self.nportlabel=QLabel('Network port')
@@ -185,10 +184,6 @@ class Connect(QDialog):
         self.paritylist=QComboBox()
         self.flowlabel=QLabel('Flowcontrol')
         self.flowlist=QComboBox()
-        self.slaveidlabel=QLabel('Slave ID')
-        self.slaveidedit=QLineEdit(str(args.slaveid))
-        self.offsetlabel=QLabel('Register offset')
-        self.offsetedit=QLineEdit(str(args.offset))
         self.buttons=QDialogButtonBox(self)
         self.buttons.setStandardButtons(QDialogButtonBox.Cancel|QDialogButtonBox.Ok)
         vlayout=QVBoxLayout()
@@ -200,6 +195,10 @@ class Connect(QDialog):
         vlayout.addWidget(self.commlist)
         vlayout.addWidget(QLabel('MODBUS framer'))
         vlayout.addWidget(self.framerlist)
+        vlayout.addWidget(QLabel('Slave ID'))
+        vlayout.addWidget(self.slaveidedit)
+        vlayout.addWidget(QLabel('Register offset'))
+        vlayout.addWidget(self.offsetedit)
         vlayout.addWidget(self.hostlabel)
         vlayout.addWidget(self.hostedit)
         vlayout.addWidget(self.nportlabel)
@@ -212,17 +211,6 @@ class Connect(QDialog):
         vlayout.addWidget(self.paritylist)
         vlayout.addWidget(self.flowlabel)
         vlayout.addWidget(self.flowlist)
-        vlayout.addWidget(QLabel(''))
-        if server:
-            self.slaveidlabel.setVisible(False)
-            self.slaveidedit.setVisible(False)
-            self.offsetlabel.setVisible(False)
-            self.offsetedit.setVisible(False)
-        else:
-            vlayout.addWidget(self.slaveidlabel)
-            vlayout.addWidget(self.slaveidedit)
-            vlayout.addWidget(self.offsetlabel)
-            vlayout.addWidget(self.offsetedit)
         vlayout.addWidget(QLabel(''),1)
         vlayout.addWidget(self.buttons)
         self.setLayout(vlayout)

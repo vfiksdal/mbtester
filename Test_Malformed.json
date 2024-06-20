@@ -1,0 +1,42 @@
+{
+    "identity": {
+        "VendorName": "MBTester",
+        "ProductCode": "Test Profile",
+        "VendorUrl": "https://github.com/vfiksdal/mbtester",
+        "ProductName": "Malformed Test Profile",
+        "ModelName": "Test Profile",
+        "MajorMinorRevision": "1.0.0"
+    },
+    "datablocks": {
+        "di": {
+            "1": {"dsc":"8bit int","dtype":"uint8","rtype":"rw","value":123},
+            "2": {"dsc":"16bit int","dtype":"uint16","nonsense":1,"value":12345},
+            "3": {"dsc":"32bit int","dtype":"uint32","value":"123456789"},
+            "5": {"dsc":"Half-precision float","dtype":"float16","value":1234.456789},
+            "6": {"dsc":"Single-precision float","dtype":"float32","value":1234.456789},
+            "8": {"dsc":"Double-precision float","dtype":"float64","value":1234},
+            "12": {"dsc":"String","dtype":"string","value":"Testing MODBUS string register value"}
+        },
+        "co": {
+            "1": {"dsc":"0 bit","dtype":"bit","value":"0"},
+            "2": {"dsc":"1 bit","dtype":"bit","value":"1"},
+            "3": {"dsc":"False bit","dtype":"bit","value":"false"},
+            "4": {"dsc":"True bit","dtype":"bit","value":"true"}
+        },
+        "hr": {
+            "3": {"dsc":"False bit","dtype":"bit","value":"True"},
+            "4": {"dsc":"True bit","dtype":"bit","value":111},
+            "2": {"dsc":"1 bit","dtype":"bit","value":"one"},
+            "1": {"dsc":"0 bit","dtype":"bit","value":"null"}
+        },
+        "ir": {
+            "1": {"dsc":"8bit int","dtype":"uint8","value":123},
+            "2": {"dsc":"16bit int","dtype":"uint16","value":12345},
+            "3": {"dsc":"32bit int","dtype":"uint32","value":123456789},
+            "5": {"dsc":"Half-precision float","dtype":"float16","value":1234.456789},
+            "6": {"dsc":"Single-precision float","dtype":"float32","value":1234.456789},
+            "8": {"dsc":"Double-precision float","dtype":"float64","value":1234.456789},
+            "12": {"dsc":"String","dtype":"string","value":"Testing MODBUS string register value"}
+        }
+    }
+}

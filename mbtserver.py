@@ -4,10 +4,6 @@
 # Vegard Fiksdal (C) 2024
 #
 
-# Import system modules
-import logging.handlers
-import sys,argparse,logging
-
 # Import QT modules
 from PyQt5.QtWidgets import QApplication, QMainWindow, QProgressBar, QSplitter, QTreeView, QFrame, QStatusBar, QVBoxLayout, QScrollArea, QMenuBar, QMenu, QAction, QTableWidget, QTableWidgetItem
 from PyQt5.Qt import QStandardItemModel, QHeaderView, QAbstractItemView
@@ -16,12 +12,6 @@ from PyQt5.QtCore import Qt, QTimer
 # Import local modules
 from components import *
 from mbserver import *
-
-# Simple identification
-application=Utils.getAppName()+' Client '+Utils.getAppVersion()
-aboutstring=application+'\n'
-aboutstring+='GUI server for MODBUS Testing\n'
-aboutstring+='Vegard Fiksdal(C)2024'
 
 
 ##\class ServerTableFrame
@@ -136,7 +126,7 @@ class ServerUI(QMainWindow):
         self.server=None
         self.conframe=ConFrame(args)
         while(True):
-            if Connect(args,True).exec_()!=0:
+            if Connect(args).exec_()!=0:
                 self.server=ServerObject(args)
                 if self.server.StartServer(): break
             else:
@@ -303,22 +293,14 @@ class ServerUI(QMainWindow):
         return filename
 
 
-# Parse command line options
-argformatter=lambda prog: argparse.RawTextHelpFormatter(prog,max_help_position=54)
-parser=argparse.ArgumentParser(description=aboutstring,formatter_class=argformatter)
-parser.add_argument('-c','--comm',choices=['tcp', 'udp', 'serial'],help='set communication, default is tcp',dest='comm',default='tcp',type=str)
-parser.add_argument('-f','--framer',choices=['ascii', 'rtu', 'socket'],help='set framer, default is rtu',dest='framer',default='rtu',type=str)
-parser.add_argument('-H','--host',help='set host, default is 127.0.0.1',dest='host',default='127.0.0.1',type=str)
-parser.add_argument('-P','--port',help='set tcp/udp network port',dest='port',default='502',type=str)
-parser.add_argument('-S','--serial',help='set serial port',dest='serial',default='COM1',type=str)
-parser.add_argument('-b','--baudrate',help='set serial device baud rate',dest='baudrate',default=9600,type=int)
-parser.add_argument('-x','--parity',choices=['O', 'E', 'N'],help='set serial device parity',dest='parity',default='N',type=str)
-parser.add_argument('-t','--timeout',help='set request timeout',dest='timeout',default=1,type=int)
-parser.add_argument('-p','--profile',help='modbus register profile to serve',dest='profile',default='',type=str)
-parser.add_argument('-l','--log',choices=['critical', 'error', 'warning', 'info', 'debug'],help='set log level, default is info',dest='log',default='info',type=str)
-args = parser.parse_args()
+# Simple identification
+application=Utils.getAppName()+' Server '+Utils.getAppVersion()
+aboutstring=application+'\n'
+aboutstring+='GUI server for MODBUS Testing\n'
+aboutstring+='Vegard Fiksdal(C)2024'
 
 # Load application window and start application
+args=Utils.parseArguments(aboutstring)
 app=QApplication(sys.argv)
 window=ServerUI(args)
 app.exec()

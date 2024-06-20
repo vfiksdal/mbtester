@@ -6,7 +6,7 @@
 from pymodbus.payload import BinaryPayloadBuilder
 from pymodbus.payload import BinaryPayloadDecoder
 from pymodbus.datastore import ModbusSparseDataBlock
-import json,logging,sys,os
+import json,logging,sys,os,argparse
 
 ##\class Utils
 # \brief Utilities for loading profiles, handling register values etc
@@ -19,7 +19,30 @@ class Utils():
     ##\brief Get application version
     # \return Current version as a string
     def getAppVersion():
-        return '0.2.0'
+        return '0.2.1'
+
+    ##\brief Parse commandline arguments
+    # \param about String to describe program
+    # \param offset Default register address offset
+    # \return Parsed arguments as an object
+    #
+    # The offset will typically be 0 for a server, and -1 for a client due to modbus oddness.
+    def parseArguments(about,offset=0):
+        argformatter=lambda prog: argparse.RawTextHelpFormatter(prog,max_help_position=54)
+        parser=argparse.ArgumentParser(description=about,formatter_class=argformatter)
+        parser.add_argument('-c','--comm',choices=['tcp', 'udp', 'serial'],help='Communication interface, default is tcp',dest='comm',default='tcp',type=str)
+        parser.add_argument('-f','--framer',choices=['ascii', 'rtu', 'socket'],help='MODBUS framer, default is rtu',dest='framer',default='rtu',type=str)
+        parser.add_argument('-s','--slaveid',help='Slave id',dest='slaveid',default=1,type=int)
+        parser.add_argument('-o','--offset',help='Register address offset',dest='offset',default=offset,type=int)
+        parser.add_argument('-H','--host',help='Network host, default is 127.0.0.1',dest='host',default='127.0.0.1',type=str)
+        parser.add_argument('-P','--port',help='TCP/UDP network port',dest='port',default='502',type=str)
+        parser.add_argument('-S','--serial',help='Serial device port name',dest='serial',default='COM1',type=str)
+        parser.add_argument('-b','--baudrate',help='Serial device baud rate',dest='baudrate',default=9600,type=int)
+        parser.add_argument('-x','--parity',choices=['O', 'E', 'N'],help='Serial device parity',dest='parity',default='N',type=str)
+        parser.add_argument('-t','--timeout',help='Request timeout',dest='timeout',default=1,type=int)
+        parser.add_argument('-p','--profile',help='MODBUS register profile to serve',dest='profile',default='',type=str)
+        parser.add_argument('-l','--log',choices=['critical', 'error', 'warning', 'info', 'debug'],help='Log level, default is info',dest='log',default='info',type=str)
+        return parser.parse_args()
 
     ##\brief Get path of application
     # \return Application path as a string
@@ -96,11 +119,15 @@ class Utils():
         s+='%-*s: %s\n' % (30,'Communication interface',args.comm.upper())
         s+='%-*s: %s\n' % (30,'MODBUS framer',args.framer.upper())
         s+='%-*s: %s\n' % (30,'MODBUS profile',os.path.basename(args.profile))
+        #s+='%-*s: %s\n' % (30,'MODBUS offset',str(args.offset))
         if args.comm=='serial':
+            s+='%-*s: %s\n' % (30,'MODBUS slave ID',os.path.basename(str(args.slaveid)))
             s+='%-*s: %s\n' % (30,'Serial port',args.serial)
             s+='%-*s: %s\n' % (30,'Baudrate',args.baudrate)
             s+='%-*s: %s\n' % (30,'Parity',Utils.getParityName(args.parity))
         else:
+            if args.slaveid:
+                s+='%-*s: %s\n' % (30,'MODBUS slave ID',os.path.basename(str(args.slaveid)))
             s+='%-*s: %s\n' % (30,'Network host',args.host)
             s+='%-*s: %s\n' % (30,'Network port',args.port)
         return s
