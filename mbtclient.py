@@ -19,7 +19,7 @@ from mbclient import *
 
 # Simple identification
 appname='MBTester Client'
-appversion='0.1.2'
+appversion='0.2.0'
 application=appname+' '+appversion
 aboutstring=application+'\n'
 aboutstring+='GUI client for MODBUS Testing\n'
@@ -98,6 +98,10 @@ class ClientTableFrame(QFrame):
     def DoubleClicked(self,row,column):
         address=self.table[row][3]
         register=self.worker.client.profile['datablocks'][self.datablock][address]
+        if register['rtype'].upper()=='R':
+            resp=QMessageBox.question(self,'Confirmation','This value is marked read-only.\n\nDo you want to try overwriting it anyway?')
+            if resp==QMessageBox.StandardButton.No: return
+
         dialog=SetValue(register)
         if dialog.exec_()!=0:
             register['value']=dialog.value
@@ -181,10 +185,10 @@ class ClientWorker():
                 if len(self.backlog):
                     backlog=self.backlog[0]
                     self.backlog=self.backlog[1:]
-                    if backlog[2]:
-                        self.wcount+=1
-                    else:
+                    if backlog[2]==None:
                         self.rcount+=1
+                    else:
+                        self.wcount+=1
                 else:
                     if self.start:
                         duration=now-self.start
@@ -195,11 +199,11 @@ class ClientWorker():
                     backlog=None
 
             if backlog:
-                if backlog[2]:
+                if backlog[2]==None:
+                    value=self.client.Read(backlog[0],backlog[1])
+                else:
                     value=None
                     if self.client.Write(backlog[0],backlog[1],backlog[2]): value=backlog[2]
-                else:
-                    value=self.client.Read(backlog[0],backlog[1])
                 if value==None:
                     logging.warning('Failed to read/write register '+str(backlog[1]))
                 elif self.callback:

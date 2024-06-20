@@ -64,7 +64,9 @@ class AsyncClientObject():
         if response.isError() or isinstance(response, ExceptionResponse):
             logging.warning(str(response))
             return None
-        return Utils.decodeRegister(registerdata,response.registers)
+        if datablock=='di' or datablock=='co': return response.bits[0]
+        if datablock=='hr' or datablock=='ir': return Utils.decodeRegister(registerdata,response.registers)
+        return None
 
     ##\brief Write registers to the server
     # \param datablock Datablock to write to (di,co,hr or ir)
@@ -79,10 +81,10 @@ class AsyncClientObject():
             values=Utils.encodeRegister(registerdata,value)
 
             # Execute request
-            if datablock=='di': pass
+            if datablock=='di': return False
             if datablock=='co': response = await self.client.write_coil(registeraddress,value,self.slaveid)
             if datablock=='hr': response = await self.client.write_registers(registeraddress,values,self.slaveid)
-            if datablock=='ir': pass
+            if datablock=='ir': return False
         except ModbusException as exc:
             logging.error('ModbusException: '+str(exc))
             return None
@@ -163,7 +165,9 @@ class ClientObject():
         if response.isError() or isinstance(response, ExceptionResponse):
             logging.warning(str(response))
             return None
-        return Utils.decodeRegister(registerdata,response.registers)
+        if datablock=='di' or datablock=='co': return response.bits[0]
+        if datablock=='hr' or datablock=='ir': return Utils.decodeRegister(registerdata,response.registers)
+        return None
 
     ##\brief Write registers to the server
     # \param datablock Datablock to write to (di,co,hr or ir)
@@ -178,10 +182,10 @@ class ClientObject():
             values=Utils.encodeRegister(registerdata,value)
 
             # Execute request
-            if datablock=='di': pass
+            if datablock=='di': return False
             if datablock=='co': response = self.client.write_coil(registeraddress,value,self.slaveid)
             if datablock=='hr': response = self.client.write_registers(registeraddress,values,self.slaveid)
-            if datablock=='ir': pass
+            if datablock=='ir': return False
         except ModbusException as exc:
             logging.error('ModbusException: '+str(exc))
             return None

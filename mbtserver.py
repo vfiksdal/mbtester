@@ -19,7 +19,7 @@ from mbserver import *
 
 # Simple identification
 appname='MBTester Server'
-appversion='0.1.2'
+appversion='0.2.0'
 application=appname+' '+appversion
 aboutstring=application+'\n'
 aboutstring+='GUI server for MODBUS Testing\n'
