@@ -6,7 +6,7 @@
 from pymodbus.payload import BinaryPayloadBuilder
 from pymodbus.payload import BinaryPayloadDecoder
 from pymodbus.datastore import ModbusSparseDataBlock
-import json,logging,sys,os,argparse
+import json,logging,sys,os,argparse,struct
 
 ##\class Utils
 # \brief Utilities for loading profiles, handling register values etc
@@ -226,21 +226,21 @@ class Utils():
     # \param value Potentially erroniously typed value, typically a string representation
     # \return Decoded value
     #
-    # This is very likely to raise an exception. Always try-catch this one properly
+    # This is likely to raise an exception. Always try-catch this one properly
     def castRegister(profile,value):
-        if profile['dtype']=='float16':     value=float(value)
-        elif profile['dtype']=='float32':   value=float(value)
-        elif profile['dtype']=='float64':   value=float(value)
-        elif profile['dtype']=='uint32':    value=int(value)
-        elif profile['dtype']=='uint16':    value=int(value)
-        elif profile['dtype']=='uint8':     value=int(value)
-        elif profile['dtype']=='int32':     value=int(value)
-        elif profile['dtype']=='int16':     value=int(value)
-        elif profile['dtype']=='int8':      value=int(value)
-        elif profile['dtype']=='float':     value=float(value)
-        elif profile['dtype']=='double':    value=float(value)
-        elif profile['dtype']=='word':      value=int(value)
-        elif profile['dtype']=='int':       value=int(value)
+        if profile['dtype']=='float16':     value=struct.unpack('e',struct.pack('e',float(value)))[0]
+        elif profile['dtype']=='float32':   value=struct.unpack('f',struct.pack('f',float(value)))[0]
+        elif profile['dtype']=='float64':   value=struct.unpack('d',struct.pack('d',float(value)))[0]
+        elif profile['dtype']=='uint32':    value=struct.unpack('I',struct.pack('I',int(value)))[0]
+        elif profile['dtype']=='uint16':    value=struct.unpack('H',struct.pack('H',int(value)))[0]
+        elif profile['dtype']=='uint8':     value=struct.unpack('B',struct.pack('B',int(value)))[0]
+        elif profile['dtype']=='int32':     value=struct.unpack('i',struct.pack('i',int(value)))[0]
+        elif profile['dtype']=='int16':     value=struct.unpack('h',struct.pack('h',int(value)))[0]
+        elif profile['dtype']=='int8':      value=struct.unpack('b',struct.pack('b',int(value)))[0]
+        elif profile['dtype']=='float':     value=struct.unpack('f',struct.pack('f',float(value)))[0]
+        elif profile['dtype']=='double':    value=struct.unpack('d',struct.pack('d',float(value)))[0]
+        elif profile['dtype']=='word':      value=struct.unpack('h',struct.pack('h',int(value)))[0]
+        elif profile['dtype']=='int':       value=struct.unpack('i',struct.pack('i',int(value)))[0]
         elif profile['dtype']=='bit':
             if isinstance(value,str) and (value.upper()=='FALSE' or value=='0'):
                 value=False

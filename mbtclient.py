@@ -237,6 +237,7 @@ class ClientUI(QMainWindow):
         # Try to connect with dialog
         self.client=None
         self.conframe=ConFrame(args)
+        self.conframe.showMessagebox(True)
         while(True):
             if Connect(args).exec_()!=0:
                 self.client=ClientObject(args)
@@ -245,6 +246,7 @@ class ClientUI(QMainWindow):
                 logging.error('User aborted')
                 sys.exit()
         self.worker=ClientWorker(self.client,self.Update)
+        self.conframe.showMessagebox(False)
         self.conframe.Clear()
         for line in aboutstring.split('\n'):
             self.conframe.AddText(line)

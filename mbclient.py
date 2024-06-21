@@ -81,16 +81,17 @@ class AsyncClientObject():
             values=Utils.encodeRegister(registerdata,value)
 
             # Execute request
-            if datablock=='di': return False
             if datablock=='co': response = await self.client.write_coil(registeraddress,value,self.slaveid)
             if datablock=='hr': response = await self.client.write_registers(registeraddress,values,self.slaveid)
-            if datablock=='ir': return False
         except ModbusException as exc:
             logging.error('ModbusException: '+str(exc))
-            return None
+            return False
+        if response==None:
+            logging.warn('Can not write to input registers!')
+            return False
         if response.isError() or isinstance(response, ExceptionResponse):
             logging.warning(str(response))
-            return None
+            return False
         return True
 
     ##\brief Read all registers from the server
@@ -182,16 +183,17 @@ class ClientObject():
             values=Utils.encodeRegister(registerdata,value)
 
             # Execute request
-            if datablock=='di': return False
             if datablock=='co': response = self.client.write_coil(registeraddress,value,self.slaveid)
             if datablock=='hr': response = self.client.write_registers(registeraddress,values,self.slaveid)
-            if datablock=='ir': return False
         except ModbusException as exc:
             logging.error('ModbusException: '+str(exc))
-            return None
+            return False
+        if response==None:
+            logging.warn('Can not write to input registers!')
+            return False
         if response.isError() or isinstance(response, ExceptionResponse):
             logging.warning(str(response))
-            return None
+            return False
         return True
 
     ##\brief Read all registers from the server

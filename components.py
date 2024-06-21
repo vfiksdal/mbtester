@@ -30,6 +30,7 @@ class ConFrame(QFrame):
         self.savebutton=QPushButton('Save log to file')
         self.savebutton.clicked.connect(self.savelog)
         self.messages=[]
+        self.msgbox=False
 
         # Manage loglevels
         levels=['CRITICAL','ERROR','WARNING','INFO','DEBUG']
@@ -84,14 +85,21 @@ class ConFrame(QFrame):
                 f.write(text)
                 f.close()
 
+    ##\brief Show errors in a messagebox
+    # \param show True to display messagebox for error messages
+    #
+    # This is useful when connecting
+    def showMessagebox(self,show):
+        self.msgbox=show
+
     ##\brief Updates GUI with added messages
     def Update(self):
         if self.handler:
             messages=self.handler.messages
             self.handler.messages=[]
             for message in messages:
-                if message.levelno==logging.ERROR or message.levelno==logging.CRITICAL:
-                    QMessageBox.critical(self,'Error',str(message.msg))
+                if self.msgbox and (message.levelno==logging.ERROR or message.levelno==logging.CRITICAL):
+                    QMessageBox.critical(self,message.module,str(message.msg))
                 s='%s  %-*s %s' % (datetime.datetime.now().strftime('%c'),8,message.levelname,message.msg)
                 self.listbox.addItem(s)
             if len(messages):
@@ -152,9 +160,9 @@ class SetValue(QDialog):
             self.value=Utils.castRegister(self.register,self.valueedit.text())
             super().accept()
         except Exception as error:
-            QMessageBox.about(self,'Error',str(error))
+            QMessageBox.critical(self,'Error',str(error))
         except:
-            QMessageBox.about(self,'Error','An unknown error occurred')
+            QMessageBox.critical(self,'Error','An unknown error occurred')
 
 ##\class Connect
 # \brief Window to display connection options to the user
