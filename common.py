@@ -33,7 +33,7 @@ class Utils():
         parser.add_argument('-c','--comm',choices=['tcp', 'udp', 'serial'],help='Communication interface, default is tcp',dest='comm',default='tcp',type=str)
         parser.add_argument('-f','--framer',choices=['ascii', 'rtu', 'socket'],help='MODBUS framer, default is rtu',dest='framer',default='rtu',type=str)
         parser.add_argument('-s','--slaveid',help='Slave id',dest='slaveid',default=1,type=int)
-        parser.add_argument('-o','--offset',help='Register address offset',dest='offset',default=offset,type=int)
+        parser.add_argument('-o','--offset',help='Register address offset (client only)',dest='offset',default=offset,type=int)
         parser.add_argument('-H','--host',help='Network host, default is 127.0.0.1',dest='host',default='127.0.0.1',type=str)
         parser.add_argument('-P','--port',help='TCP/UDP network port',dest='port',default='502',type=str)
         parser.add_argument('-S','--serial',help='Serial device port name',dest='serial',default='COM1',type=str)
@@ -119,15 +119,13 @@ class Utils():
         s+='%-*s: %s\n' % (30,'Communication interface',args.comm.upper())
         s+='%-*s: %s\n' % (30,'MODBUS framer',args.framer.upper())
         s+='%-*s: %s\n' % (30,'MODBUS profile',os.path.basename(args.profile))
+        s+='%-*s: %s\n' % (30,'MODBUS slave ID',str(args.slaveid))
         #s+='%-*s: %s\n' % (30,'MODBUS offset',str(args.offset))
         if args.comm=='serial':
-            s+='%-*s: %s\n' % (30,'MODBUS slave ID',os.path.basename(str(args.slaveid)))
             s+='%-*s: %s\n' % (30,'Serial port',args.serial)
             s+='%-*s: %s\n' % (30,'Baudrate',args.baudrate)
             s+='%-*s: %s\n' % (30,'Parity',Utils.getParityName(args.parity))
         else:
-            if args.slaveid:
-                s+='%-*s: %s\n' % (30,'MODBUS slave ID',os.path.basename(str(args.slaveid)))
             s+='%-*s: %s\n' % (30,'Network host',args.host)
             s+='%-*s: %s\n' % (30,'Network port',args.port)
         return s
@@ -272,14 +270,14 @@ class DataBlock(ModbusSparseDataBlock):
     # \param address Register address to write to
     # \param value Values to write
     def setValues(self, address, value):
-        super().setValues(address, value)
+        super().setValues(address,value)
         if self.cb_write: self.cb_write(address,value)
 
     ##\brief Get modbus register contents
     # \param address Register address to read from
     # \param count Number of 16-bit registers to read
     def getValues(self, address, count=1):
-        values = super().getValues(address, count=count)
+        values = super().getValues(address,count)
         if self.cb_read: self.cb_read(address,values)
         return values
 
@@ -287,4 +285,4 @@ class DataBlock(ModbusSparseDataBlock):
     # \param address Register address to validate
     # \param count Number of 16-bit registers to validate
     def validate(self, address, count=1):
-        return super().validate(address, count=count)
+        return super().validate(address,count)
