@@ -50,12 +50,9 @@ class AsyncServerObject():
     async def startServer(self):
         self.running=True
         args=self.args
-        if args.comm=='tcp':
-            self.server = await StartAsyncTcpServer(context=self.mastercontext,identity=self.identity,address=(args.host,args.port),framer=args.framer)
-        if args.comm=='udp':
-            self.server = await StartAsyncUdpServer(context=self.mastercontext,identity=self.identity,address=(args.host,args.port),framer=args.framer,timeout=args.timeout)
-        if args.comm=='serial':
-            self.server = await StartAsyncSerialServer(context=self.mastercontext,identity=self.identity,port=args.serial,baudrate=args.baudrate,bytesize=8,parity=args.parity,stopbits=1,framer=args.framer,timeout=args.timeout)
+        if args.comm=='tcp':    self.server = await StartAsyncTcpServer(context=self.mastercontext,identity=self.identity,address=(args.host,args.port),framer=args.framer)
+        if args.comm=='udp':    self.server = await StartAsyncUdpServer(context=self.mastercontext,identity=self.identity,address=(args.host,args.port),framer=args.framer,timeout=args.timeout)
+        if args.comm=='serial': self.server = await StartAsyncSerialServer(context=self.mastercontext,identity=self.identity,port=args.serial,baudrate=args.baudrate,bytesize=args.bytesize,parity=args.parity,stopbits=1,framer=args.framer,timeout=args.timeout)
         self.running=False
 
     ##\brief Stops the modbus server
@@ -74,12 +71,9 @@ class ServerObject(AsyncServerObject):
     def runServer(self):
         self.running=True
         args=self.args
-        if args.comm=='tcp':
-            self.server = StartTcpServer(context=self.mastercontext,identity=self.identity,address=(args.host,args.port),framer=args.framer)
-        if args.comm=='udp':
-            self.server = StartUdpServer(context=self.mastercontext,identity=self.identity,address=(args.host,args.port),framer=args.framer,timeout=args.timeout)
-        if args.comm=='serial':
-            self.server = StartSerialServer(context=self.mastercontext,identity=self.identity,port=args.serial,baudrate=args.baudrate,bytesize=8,parity=args.parity,stopbits=1,framer=args.framer,timeout=args.timeout)
+        if args.comm=='tcp':    self.server = StartTcpServer(context=self.mastercontext,identity=self.identity,address=(args.host,args.port),framer=args.framer)
+        if args.comm=='udp':    self.server = StartUdpServer(context=self.mastercontext,identity=self.identity,address=(args.host,args.port),framer=args.framer,timeout=args.timeout)
+        if args.comm=='serial': self.server = StartSerialServer(context=self.mastercontext,identity=self.identity,port=args.serial,baudrate=args.baudrate,bytesize=args.bytesize,parity=args.parity,stopbits=1,framer=args.framer,timeout=args.timeout)
         self.running=False
 
     ##\brief Starts the modbus server in a background thread

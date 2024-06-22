@@ -334,10 +334,9 @@ class ClientUI(QMainWindow):
     ##\brief Get filename from user input
     # \param Desc Textual description of output file
     # \param Ext File extension to save as
-    # \param Returns filename
+    # \return filename
     def getFilename(self,Desc,Ext):
         options = QFileDialog.Options()
-        #options |= QFileDialog.DontUseNativeDialog
         title='Save '+Desc
         default=Desc+'.'+Ext
         filter=Desc+'(*.'+Ext+');;All Files(*.*)'

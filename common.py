@@ -39,6 +39,7 @@ class Utils():
         parser.add_argument('-S','--serial',help='Serial device port name',dest='serial',default='COM1',type=str)
         parser.add_argument('-b','--baudrate',help='Serial device baud rate',dest='baudrate',default=9600,type=int)
         parser.add_argument('-x','--parity',choices=['O', 'E', 'N'],help='Serial device parity',dest='parity',default='N',type=str)
+        parser.add_argument('-B','--bytesize',choices=[7,8],help='Serial bits per byte',dest='bytesize',default=8,type=int)
         parser.add_argument('-t','--timeout',help='Request timeout',dest='timeout',default=1,type=int)
         parser.add_argument('-p','--profile',help='MODBUS register profile to serve',dest='profile',default='',type=str)
         parser.add_argument('-l','--log',choices=['critical', 'error', 'warning', 'info', 'debug'],help='Log level, default is info',dest='log',default='info',type=str)

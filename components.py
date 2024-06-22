@@ -409,8 +409,14 @@ class CSVLogger(QFrame):
     ##\brief Start or stops logging to disk
     def startStop(self):
         start=self.tablewidget.isEnabled()
-
         if start:
+            # Check items to log
+            items=self.tablewidget.selectedItems()
+            cols=self.tablewidget.columnCount()
+            if len(items)==0:
+                QMessageBox.critical(self,'Error','No items selected for logging!')
+                return
+
             # Open file
             path=self.browse.getValue()
             filename=path+'/'+datetime.datetime.now().strftime('MBTester - %Y%m%d %H%M%S')+'.csv'
@@ -421,18 +427,19 @@ class CSVLogger(QFrame):
 
             # Write header
             csv='Time'
-            items=self.tablewidget.selectedItems()
-            cols=self.tablewidget.columnCount()
             for i in range(0,len(items),cols):
                 hdr=items[i+1].text()
                 if hdr=='': hdr=items[i+cols-2].text()
                 hdr.replace(',','_')
                 csv+=','+items[i+1].text()
             self.fd.write(csv+'\n')
-        elif self.fd:
+            self.startbutton.setText('Stop logging')
+        else:
             # Close file
-            self.fd.close()
-            self.fd=None
+            if self.fd:
+                self.fd.close()
+                self.fd=None
+            self.startbutton.setText('Stop logging')
 
         # Reset dialog
         self.tablewidget.setEnabled(not start)

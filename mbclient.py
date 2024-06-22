@@ -26,12 +26,9 @@ class AsyncClientObject():
         # Load client object
         self.args=args
         self.client=None
-        if args.comm=='tcp':
-            self.client = ModbusClient.AsyncModbusTcpClient(args.host,port=args.port,framer=args.framer,timeout=args.timeout,retries=3)
-        if args.comm=='udp':
-            self.client = ModbusClient.AsyncModbusUdpClient(args.host,port=args.port,framer=args.framer,timeout=args.timeout,retries=3)
-        if args.comm=='serial':
-            self.client = ModbusClient.AsyncModbusSerialClient(args.serial,framer=args.framer,baudrate=args.baudrate,parity=args.parity,timeout=args.timeout,strict=True,bytesize=8,stopbits=1,retries=3,handle_local_echo=False)
+        if args.comm=='tcp':    self.client = ModbusClient.AsyncModbusTcpClient(args.host,args.port,args.framer,timeout=args.timeout,retries=3)
+        if args.comm=='udp':    self.client = ModbusClient.AsyncModbusUdpClient(args.host,args.port,args.framer,timeout=args.timeout,retries=3)
+        if args.comm=='serial': self.client = ModbusClient.AsyncModbusSerialClient(args.serial,args.framer,args.baudrate,args.bytesize,args.parity,timeout=args.timeout,strict=True,stopbits=1,retries=3,handle_local_echo=False)
 
     ##\brief Connect to the server
     # \return True if succsessfully connected
@@ -103,7 +100,7 @@ class AsyncClientObject():
         for datablock in self.profile['datablocks']:
             for address in self.profile['datablocks'][datablock]:
                 value=await self.read(datablock,address)
-                if value:
+                if value!=None:
                     if not datablock in output['datablocks']: output['datablocks'][datablock]={}
                     output['datablocks'][datablock][address]={}
                     output['datablocks'][datablock][address]['name']=self.profile['datablocks'][datablock][address]['dsc']
@@ -128,12 +125,9 @@ class ClientObject():
         # Load client object
         self.args=args
         self.client=None
-        if args.comm=='tcp':
-            self.client = ModbusClient.ModbusTcpClient(args.host,port=args.port,framer=args.framer,timeout=args.timeout,retries=3)
-        if args.comm=='udp':
-            self.client = ModbusClient.ModbusUdpClient(args.host,port=args.port,framer=args.framer,timeout=args.timeout,retries=3)
-        if args.comm=='serial':
-            self.client = ModbusClient.ModbusSerialClient(args.serial,framer=args.framer,baudrate=args.baudrate,parity=args.parity,timeout=args.timeout,strict=True,bytesize=8,stopbits=1,retries=3,handle_local_echo=False)
+        if args.comm=='tcp':    self.client = ModbusClient.ModbusTcpClient(args.host,args.port,args.framer,timeout=args.timeout,retries=3)
+        if args.comm=='udp':    self.client = ModbusClient.ModbusUdpClient(args.host,args.port,args.framer,timeout=args.timeout,retries=3)
+        if args.comm=='serial': self.client = ModbusClient.ModbusSerialClient(args.serial,args.framer,args.baudrate,args.bytesize,args.parity,timeout=args.timeout,strict=True,stopbits=1,retries=3,handle_local_echo=False)
 
     ##\brief Connect to the server
     # \return True if succsessfully connected
@@ -205,7 +199,7 @@ class ClientObject():
         for datablock in self.profile['datablocks']:
             for address in self.profile['datablocks'][datablock]:
                 value=self.read(datablock,address)
-                if value:
+                if value!=None:
                     if not datablock in output['datablocks']: output['datablocks'][datablock]={}
                     output['datablocks'][datablock][address]={}
                     output['datablocks'][datablock][address]['name']=self.profile['datablocks'][datablock][address]['dsc']

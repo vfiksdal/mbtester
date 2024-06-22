@@ -159,10 +159,10 @@ class ServerUI(QMainWindow):
         treemodel=QStandardItemModel()
         rootnode=treemodel.invisibleRootItem()
         logitem=StandardItem('Console')
-        rootnode.appendRow(StandardItem('Discrete inputs'))
-        rootnode.appendRow(StandardItem('Coils'))
-        rootnode.appendRow(StandardItem('Holding registers'))
-        rootnode.appendRow(StandardItem('Input registers'))
+        rootnode.appendRow(StandardItem(Utils.getDatablockName('di')))
+        rootnode.appendRow(StandardItem(Utils.getDatablockName('co')))
+        rootnode.appendRow(StandardItem(Utils.getDatablockName('hr')))
+        rootnode.appendRow(StandardItem(Utils.getDatablockName('ir')))
         rootnode.appendRow(logitem)
 
         # Wrap up treeview
@@ -224,10 +224,10 @@ class ServerUI(QMainWindow):
     # \param Value The clicked item
     def treeviewClick(self,Value):
         title=Value.data()
-        self.table_di.setVisible(title=='Discrete inputs')
-        self.table_co.setVisible(title=='Coils')
-        self.table_hr.setVisible(title=='Holding registers')
-        self.table_ir.setVisible(title=='Input registers')
+        self.table_di.setVisible(title==StandardItem(Utils.getDatablockName('di')))
+        self.table_co.setVisible(title==StandardItem(Utils.getDatablockName('co')))
+        self.table_hr.setVisible(title==StandardItem(Utils.getDatablockName('hr')))
+        self.table_ir.setVisible(title==StandardItem(Utils.getDatablockName('ir')))
         self.conframe.setVisible(title=='Console')
 
     ##\brief Timer event to update status and tranceivers
@@ -253,7 +253,6 @@ class ServerUI(QMainWindow):
     ##\brief Creates menu bar
     def createMenubar(self):
         # Create menu actions
-        #saveprofile=lambda x: self.SaveTextToFile('Device Configuration','devcfg',x)
         action_saveprofile=QAction('Save profile',self)
         action_saveprofile.setStatusTip('Save current profile to file')
         action_saveprofile.triggered.connect(lambda: Utils.saveProfile(self.server.profile,self.getFilename('Profile','json')))
@@ -274,14 +273,12 @@ class ServerUI(QMainWindow):
         menubar.addMenu(helpmenu)
         self.setMenuBar(menubar)
 
-    ##\brief Saves text string to file
+    ##\brief Get filename from user input
     # \param Desc Textual description of output file
     # \param Ext File extension to save as
-    # \param Bin Text string to save
-    # \param Returns filename
+    # \return filename
     def getFilename(self,Desc,Ext):
         options = QFileDialog.Options()
-        #options |= QFileDialog.DontUseNativeDialog
         title='Save '+Desc
         default=Desc+'.'+Ext
         filter=Desc+'(*.'+Ext+');;All Files(*.*)'
