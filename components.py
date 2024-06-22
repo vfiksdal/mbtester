@@ -24,7 +24,7 @@ class BrowseBox(QFrame):
         self.button=QPushButton('...')
         self.edit.setEnabled(not locked)
         self.button.setEnabled(not locked)
-        self.button.clicked.connect(self.Browse)
+        self.button.clicked.connect(self.browse)
         layout=QHBoxLayout()
         ilayout=QHBoxLayout()
         ilayout.addWidget(self.edit,1)
@@ -35,23 +35,18 @@ class BrowseBox(QFrame):
         self.setLayout(layout)
 
     ##\brief Opens a file dialog to set the path visually
-    def Browse(self):
+    def browse(self):
         folder = str(QFileDialog.getExistingDirectory(self, "Select Directory"))
         if len(folder): self.edit.setText(str(folder))
-    
-    ##\brief Changes the label text
-    # \param Text New text to be displayed
-    def SetLabel(self,Text):
-        self.label.setText(Text)
 
     ##\brief Changes the value
     # \param Text New value as a string
-    def SetValue(self,Value):
+    def setValue(self,Value):
         self.edit.setText(str(Value))
 
     ##\brief Get current value
     # \return String describing a path. Not checked in any way.
-    def GetValue(self):
+    def getValue(self):
         return self.edit.text()
 
 ##\class ConFrame
@@ -66,7 +61,7 @@ class ConFrame(QFrame):
         self.listbox.setFont(QFont('cascadia mono'))
         self.dropdown=QComboBox()
         self.clearbutton=QPushButton('Clear logs')
-        self.clearbutton.clicked.connect(self.Clear)
+        self.clearbutton.clicked.connect(self.clear)
         self.savebutton=QPushButton('Save log to file')
         self.savebutton.clicked.connect(self.savelog)
         self.messages=[]
@@ -92,7 +87,7 @@ class ConFrame(QFrame):
 
         # Use a timer to process data from the queue
         self.timer=QTimer()
-        self.timer.timeout.connect(self.Update)
+        self.timer.timeout.connect(self.update)
         self.timer.start(250)
 
 
@@ -105,13 +100,13 @@ class ConFrame(QFrame):
         logging.basicConfig(level=level,handlers=[self.handler])
 
     ##\brief Clear existing log
-    def Clear(self):
+    def clear(self):
         self.messages=[]
         self.listbox.clear()
 
     ##\brief Manually adds a text string
     # \param text Text string to add
-    def AddText(self,text):
+    def addText(self,text):
         self.listbox.addItem(text)
 
     ##\brief Saves log output to file
@@ -133,7 +128,7 @@ class ConFrame(QFrame):
         self.msgbox=show
 
     ##\brief Updates GUI with added messages
-    def Update(self):
+    def update(self):
         if self.handler:
             messages=self.handler.messages
             self.handler.messages=[]
@@ -187,7 +182,7 @@ class SetValue(QDialog):
         self.valueedit=QLineEdit(str(register['value']))
         self.buttons=QDialogButtonBox(self)
         self.buttons.setStandardButtons(QDialogButtonBox.Cancel|QDialogButtonBox.Ok)
-        self.buttons.accepted.connect(self.Set)
+        self.buttons.accepted.connect(self.set)
         self.buttons.rejected.connect(self.reject)
         layout.addWidget(QLabel('Enter new register value of type '+register['dtype']))
         layout.addWidget(self.valueedit)
@@ -195,7 +190,7 @@ class SetValue(QDialog):
         self.setLayout(layout)
 
     ##\brief Validates the user input
-    def Set(self):
+    def set(self):
         try:
             self.value=Utils.castRegister(self.register,self.valueedit.text())
             super().accept()
@@ -257,7 +252,7 @@ class Connect(QDialog):
         vlayout.addWidget(QLabel(''),1)
         vlayout.addWidget(self.buttons)
         self.setLayout(vlayout)
-        self.buttons.accepted.connect(self.Open)
+        self.buttons.accepted.connect(self.open)
         self.buttons.rejected.connect(self.reject)
 
         # Enumerate profiles
@@ -336,7 +331,7 @@ class Connect(QDialog):
         self.setDefault(self.framerlist,framer)
 
     ##\brief Attempt to start a connection with the current selection
-    def Open(self):
+    def open(self):
         # Try to connect
         try:
             self.args.profile = self.profiles[self.profilelist.currentIndex()]
@@ -385,7 +380,7 @@ class CSVLogger(QFrame):
         layout.addWidget(self.startbutton)
         self.setLayout(layout)
         Utils.setMargins(layout)
-        self.startbutton.clicked.connect(self.StartStop)
+        self.startbutton.clicked.connect(self.startStop)
         self.fd=None
 
         # Populate table
@@ -401,8 +396,8 @@ class CSVLogger(QFrame):
                 column.append(register)
                 column.append(registers[register]['value'])
                 self.table.append(column)
+        self.tablewidget.setColumnCount(4)
         self.tablewidget.setRowCount(len(self.table))
-        self.tablewidget.setColumnCount(len(self.table[0]))
         self.tablewidget.setHorizontalHeaderItem(0,QTableWidgetItem('Datablock'))
         self.tablewidget.setHorizontalHeaderItem(1,QTableWidgetItem('Description'))
         self.tablewidget.setHorizontalHeaderItem(2,QTableWidgetItem('Address'))
@@ -412,12 +407,12 @@ class CSVLogger(QFrame):
                 self.tablewidget.setItem(i,j,QTableWidgetItem(str(self.table[i][j])))
 
     ##\brief Start or stops logging to disk
-    def StartStop(self):
+    def startStop(self):
         start=self.tablewidget.isEnabled()
 
         if start:
             # Open file
-            path=self.browse.GetValue()
+            path=self.browse.getValue()
             filename=path+'/'+datetime.datetime.now().strftime('MBTester - %Y%m%d %H%M%S')+'.csv'
             self.fd=open(filename,'w')
             if not self.fd:
@@ -427,7 +422,7 @@ class CSVLogger(QFrame):
             # Write header
             csv='Time'
             items=self.tablewidget.selectedItems()
-            cols=len(self.table[0])
+            cols=self.tablewidget.columnCount()
             for i in range(0,len(items),cols):
                 hdr=items[i+1].text()
                 if hdr=='': hdr=items[i+cols-2].text()
@@ -441,15 +436,13 @@ class CSVLogger(QFrame):
 
         # Reset dialog
         self.tablewidget.setEnabled(not start)
-        self.selallbutton.setEnabled(not start)
-        self.clearbutton.setEnabled(not start)
         self.browse.setEnabled(not start)
 
     ##\brief Log current values to CSV file
-    def LogItems(self):
+    def logItems(self):
         if self.fd:
             items=self.tablewidget.selectedItems()
-            cols=len(self.table[0])
+            cols=self.tablewidget.columnCount()
             csv=str(datetime.datetime.now())
             for i in range(0,len(items),cols):
                 csv+=','+items[i+cols-1].text()
@@ -459,7 +452,7 @@ class CSVLogger(QFrame):
     ##\brief Update read/write value
     # \param address Register address that has changed
     # \param value New register value
-    def Update(self,datablock,address,value):
+    def update(self,datablock,address,value):
         datatype=Utils.getDatablockName(datablock)
         for j in range(len(self.table)):
             if self.table[j][0]==datatype and self.table[j][2]==str(address):

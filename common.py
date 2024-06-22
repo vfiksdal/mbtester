@@ -280,12 +280,12 @@ class DataBlock(ModbusSparseDataBlock):
 
     ##\brief Add callback for register write
     # \param callback Callback function(datablock,register,value)
-    def AddWriteCallback(self,callback):
+    def addWriteCallback(self,callback):
         self.wcallbacks.append(callback)
 
     ##\brief Add callback for register write
     # \param callback Callback function(datablock,register,value)
-    def AddReadCallback(self,callback):
+    def addReadCallback(self,callback):
         self.rcallbacks.append(callback)
 
     ##\brief Overwrites modbus registers and calls optional callback

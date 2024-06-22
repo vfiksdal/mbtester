@@ -27,7 +27,7 @@ class ServerTableFrame(QFrame):
         self.tablewidget.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.tablewidget.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.tablewidget.setEditTriggers(QAbstractItemView.NoEditTriggers)
-        self.tablewidget.cellDoubleClicked.connect(self.DoubleClicked)
+        self.tablewidget.cellDoubleClicked.connect(self.doubleClicked)
         layout=QVBoxLayout()
         layout.addWidget(self.tablewidget,1)
         self.setLayout(layout)
@@ -39,8 +39,8 @@ class ServerTableFrame(QFrame):
         self.rcount=0
         self.wcount=0
 
-        getattr(self.server,self.datablock).AddWriteCallback(self.UpdateWrite)
-        getattr(self.server,self.datablock).AddReadCallback(self.UpdateRead)
+        getattr(self.server,self.datablock).addWriteCallback(self.updateWrite)
+        getattr(self.server,self.datablock).addReadCallback(self.updateRead)
 
         # Populate table
         registers=server.profile['datablocks'][datablock]
@@ -53,8 +53,8 @@ class ServerTableFrame(QFrame):
             column.append(register)
             column.append(registers[register]['value'])
             self.table.append(column)
+        self.tablewidget.setColumnCount(5)
         self.tablewidget.setRowCount(len(self.table))
-        self.tablewidget.setColumnCount(len(self.table[0]))
         self.tablewidget.setHorizontalHeaderItem(0,QTableWidgetItem('Description'))
         self.tablewidget.setHorizontalHeaderItem(1,QTableWidgetItem('Type'))
         self.tablewidget.setHorizontalHeaderItem(2,QTableWidgetItem('Access'))
@@ -64,7 +64,7 @@ class ServerTableFrame(QFrame):
             for j in range(len(self.table[i])):
                 self.tablewidget.setItem(i,j,QTableWidgetItem(str(self.table[i][j])))
 
-    def GetStatus(self):
+    def getStatus(self):
         return len(self.table)-1,self.rcount,self.wcount
 
     ##\brief Update read/write value
@@ -73,17 +73,17 @@ class ServerTableFrame(QFrame):
     #
     # This method only tags the changed value. The actual UI will be updated later on
     # the main UI thread -- See UpdateUI().
-    def UpdateWrite(self,datablock,address,value):
+    def updateWrite(self,datablock,address,value):
         self.updates.append([address,value])
         self.wcount+=1
 
-    def UpdateRead(self,datablock,address,value):
+    def updateRead(self,datablock,address,value):
         self.rcount+=1
 
     ##\brief Update UI controls
     #
     # This method updated the UI according to the register changes tracked by Update()
-    def UpdateUI(self):
+    def updateUI(self):
         updates=self.updates
         self.updates=[]
         for i in range(len(updates)):
@@ -99,7 +99,7 @@ class ServerTableFrame(QFrame):
     ##\brief Event handler for double-clicks. Opens a dialog to write a register value
     # \param row The clicked row
     # \param column The clicked column (Not used)
-    def DoubleClicked(self,row,column):
+    def doubleClicked(self,row,column):
         address=self.table[row][3]
         register=self.server.profile['datablocks'][self.datablock][address]
         dialog=SetValue(register)
@@ -123,17 +123,17 @@ class ServerUI(QMainWindow):
         while(True):
             if Connect(args).exec_()!=0:
                 self.server=ServerObject(args)
-                if self.server.StartServer(): break
+                if self.server.startServer(): break
             else:
                 logging.error('User aborted')
                 sys.exit()
         self.conframe.showMessagebox(False)
-        self.conframe.Clear()
+        self.conframe.clear()
         for line in aboutstring.split('\n'):
-            self.conframe.AddText(line)
-        self.conframe.AddText('')
+            self.conframe.addText(line)
+        self.conframe.addText('')
         for line in Utils.reportConfig(args).split('\n'):
-            self.conframe.AddText(line)
+            self.conframe.addText(line)
 
         # Add statusbar
         self.statusbar=QStatusBar()
@@ -168,7 +168,7 @@ class ServerUI(QMainWindow):
         # Wrap up treeview
         self.treeview.setModel(treemodel)
         self.treeview.expandAll()
-        self.treeview.clicked.connect(self.TreeviewClick)
+        self.treeview.clicked.connect(self.treeviewClick)
         index=treemodel.indexFromItem(logitem)
         self.treeview.setCurrentIndex(index)
         #self.treeview.setEnabled(False)
@@ -184,11 +184,11 @@ class ServerUI(QMainWindow):
         self.table_ir.setVisible(False)
 
         # Create menubar
-        self.CreateMenubar()
+        self.createMenubar()
 
         # Use a timer to process data from the queue
         self.timer=QTimer()
-        self.timer.timeout.connect(self.Process)
+        self.timer.timeout.connect(self.process)
         self.timer.start(100)
 
         # Show window
@@ -217,12 +217,12 @@ class ServerUI(QMainWindow):
     # \param event Not used
     def closeEvent(self, event):
         self.timer.stop()
-        if self.server: self.server.StopServer()
+        if self.server: self.server.stopServer()
         super().close()
 
     ##\brief Respond to user clicking on the treeview
     # \param Value The clicked item
-    def TreeviewClick(self,Value):
+    def treeviewClick(self,Value):
         title=Value.data()
         self.table_di.setVisible(title=='Discrete inputs')
         self.table_co.setVisible(title=='Coils')
@@ -231,18 +231,18 @@ class ServerUI(QMainWindow):
         self.conframe.setVisible(title=='Console')
 
     ##\brief Timer event to update status and tranceivers
-    def Process(self):
+    def process(self):
         # Update register lists
-        self.table_di.UpdateUI()
-        self.table_co.UpdateUI()
-        self.table_hr.UpdateUI()
-        self.table_ir.UpdateUI()
+        self.table_di.updateUI()
+        self.table_co.updateUI()
+        self.table_hr.updateUI()
+        self.table_ir.updateUI()
 
         # Update status
-        icount_di,rcount_di,wcount_di=self.table_di.GetStatus()
-        icount_co,rcount_co,wcount_co=self.table_co.GetStatus()
-        icount_hr,rcount_hr,wcount_hr=self.table_hr.GetStatus()
-        icount_ir,rcount_ir,wcount_ir=self.table_ir.GetStatus()
+        icount_di,rcount_di,wcount_di=self.table_di.getStatus()
+        icount_co,rcount_co,wcount_co=self.table_co.getStatus()
+        icount_hr,rcount_hr,wcount_hr=self.table_hr.getStatus()
+        icount_ir,rcount_ir,wcount_ir=self.table_ir.getStatus()
         icount=icount_di+icount_co+icount_hr+icount_ir
         rcount=rcount_di+rcount_co+rcount_hr+rcount_ir
         wcount=wcount_di+wcount_co+wcount_hr+wcount_ir
@@ -251,12 +251,12 @@ class ServerUI(QMainWindow):
         self.status_wcount.setText('Writes: %d' % wcount)
 
     ##\brief Creates menu bar
-    def CreateMenubar(self):
+    def createMenubar(self):
         # Create menu actions
         #saveprofile=lambda x: self.SaveTextToFile('Device Configuration','devcfg',x)
         action_saveprofile=QAction('Save profile',self)
         action_saveprofile.setStatusTip('Save current profile to file')
-        action_saveprofile.triggered.connect(lambda: Utils.saveProfile(self.server.profile,self.GetFilename('Profile','json')))
+        action_saveprofile.triggered.connect(lambda: Utils.saveProfile(self.server.profile,self.getFilename('Profile','json')))
         action_exit=QAction('Exit',self)
         action_exit.triggered.connect(lambda: self.close())
         action_about=QAction('About '+application,self)
@@ -279,7 +279,7 @@ class ServerUI(QMainWindow):
     # \param Ext File extension to save as
     # \param Bin Text string to save
     # \param Returns filename
-    def GetFilename(self,Desc,Ext):
+    def getFilename(self,Desc,Ext):
         options = QFileDialog.Options()
         #options |= QFileDialog.DontUseNativeDialog
         title='Save '+Desc

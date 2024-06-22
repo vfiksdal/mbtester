@@ -47,7 +47,7 @@ class AsyncServerObject():
         self.running=False
 
     ##\brief Starts the modbus server
-    async def StartServer(self):
+    async def startServer(self):
         self.running=True
         args=self.args
         if args.comm=='tcp':
@@ -59,7 +59,7 @@ class AsyncServerObject():
         self.running=False
 
     ##\brief Stops the modbus server
-    async def StopServer(self):
+    async def stopServer(self):
         if self.running: await ServerAsyncStop()
 
 ##\class ServerObject
@@ -71,7 +71,7 @@ class ServerObject(AsyncServerObject):
         super().__init__(args)
 
     ##\brief Thread method to run the server
-    def RunServer(self):
+    def runServer(self):
         self.running=True
         args=self.args
         if args.comm=='tcp':
@@ -84,15 +84,15 @@ class ServerObject(AsyncServerObject):
 
     ##\brief Starts the modbus server in a background thread
     # \returns True if the server is running
-    def StartServer(self):
+    def startServer(self):
         # Start server in background thread
-        self.thread=threading.Thread(target=self.RunServer)
+        self.thread=threading.Thread(target=self.runServer)
         self.thread.start()
         time.sleep(1)
         return self.running
 
     ##\brief Stops the modbus server
-    def StopServer(self):
+    def stopServer(self):
         if self.running:
             ServerStop()
             self.thread.join()
@@ -126,4 +126,4 @@ if __name__ == "__main__":
 
     # Run async server
     server=AsyncServerObject(args)
-    asyncio.run(server.StartServer())
+    asyncio.run(server.startServer())

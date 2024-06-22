@@ -30,7 +30,7 @@ class ClientTableFrame(QFrame):
         self.tablewidget.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.tablewidget.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.tablewidget.setEditTriggers(QAbstractItemView.NoEditTriggers)
-        self.tablewidget.cellDoubleClicked.connect(self.DoubleClicked)
+        self.tablewidget.cellDoubleClicked.connect(self.doubleClicked)
         layout=QVBoxLayout()
         layout.addWidget(self.tablewidget,1)
         self.setLayout(layout)
@@ -49,8 +49,8 @@ class ClientTableFrame(QFrame):
             row.append(register)
             row.append('')
             self.table.append(row)
+        self.tablewidget.setColumnCount(5)
         self.tablewidget.setRowCount(len(self.table))
-        self.tablewidget.setColumnCount(len(self.table[0]))
         self.tablewidget.setHorizontalHeaderItem(0,QTableWidgetItem('Description'))
         self.tablewidget.setHorizontalHeaderItem(1,QTableWidgetItem('Type'))
         self.tablewidget.setHorizontalHeaderItem(2,QTableWidgetItem('Access'))
@@ -64,7 +64,7 @@ class ClientTableFrame(QFrame):
     # \param datablock Datablock to update
     # \param address Register address that has changed
     # \param value New register value
-    def Update(self,datablock,address,value):
+    def update(self,datablock,address,value):
         for j in range(len(self.table)):
             if self.table[j][3]==str(address):
                 self.tablewidget.setItem(j,4,QTableWidgetItem(str(value)))
@@ -73,7 +73,7 @@ class ClientTableFrame(QFrame):
     ##\brief Event handler for double-clicks. Opens a dialog to write a register value
     # \param row The clicked row
     # \param column The clicked column (Not used)
-    def DoubleClicked(self,row,column):
+    def doubleClicked(self,row,column):
         address=self.table[row][3]
         register=self.worker.client.profile['datablocks'][self.datablock][address]
         if register['rtype'].upper()=='R':
@@ -83,7 +83,7 @@ class ClientTableFrame(QFrame):
         dialog=SetValue(register)
         if dialog.exec_()!=0:
             register['value']=dialog.value
-            self.worker.Write(self.datablock,address,dialog.value)
+            self.worker.write(self.datablock,address,dialog.value)
 
 ##\class ClientUI
 # \brief Main Application class
@@ -101,20 +101,20 @@ class ClientUI(QMainWindow):
         while(True):
             if Connect(args).exec_()!=0:
                 self.client=ClientObject(args)
-                if self.client.Connect(): break
+                if self.client.connect(): break
             else:
                 logging.error('User aborted')
                 sys.exit()
         self.worker=ClientWorker(self.client)
-        self.worker.AddReadCallback(self.Update)
-        self.worker.AddWriteCallback(self.Update)
+        self.worker.addReadCallback(self.update)
+        self.worker.addWriteCallback(self.update)
         self.conframe.showMessagebox(False)
-        self.conframe.Clear()
+        self.conframe.clear()
         for line in aboutstring.split('\n'):
-            self.conframe.AddText(line)
-        self.conframe.AddText('')
+            self.conframe.addText(line)
+        self.conframe.addText('')
         for line in Utils.reportConfig(args).split('\n'):
-            self.conframe.AddText(line)
+            self.conframe.addText(line)
 
         # Prepare update mechanism
         self.lock=threading.Lock()
@@ -163,7 +163,7 @@ class ClientUI(QMainWindow):
         # Wrap up treeview
         self.treeview.setModel(treemodel)
         self.treeview.expandAll()
-        self.treeview.clicked.connect(self.TreeviewClick)
+        self.treeview.clicked.connect(self.treeviewClick)
         index=treemodel.indexFromItem(conitem)
         self.treeview.setCurrentIndex(index)
 
@@ -176,19 +176,19 @@ class ClientUI(QMainWindow):
         self.table_co.setVisible(False)
         self.table_hr.setVisible(False)
         self.table_ir.setVisible(False)
-        self.worker.Start()
+        self.worker.start()
 
         # Load frame for logging
         self.logging=CSVLogger(self.client.profile)
         self.logging.setVisible(False)
-        self.worker.AddCompletedCallback(self.logging.LogItems)
+        self.worker.addCompletedCallback(self.logging.logItems)
 
         # Create menubar
-        self.CreateMenubar()
+        self.createMenubar()
 
         # Use a timer to process data from the queue
         self.timer=QTimer()
-        self.timer.timeout.connect(self.Process)
+        self.timer.timeout.connect(self.process)
         self.timer.start(250)
 
         # Show window
@@ -219,13 +219,13 @@ class ClientUI(QMainWindow):
     def closeEvent(self, event):
         self.timer.stop()
         logging.info('Shutting down connection')
-        if self.worker: self.worker.Close()
-        if self.client: self.client.Close()
+        if self.worker: self.worker.close()
+        if self.client: self.client.close()
         super().close()
 
     ##\brief Respond to user clicking on the treeview
     # \param Value The clicked item
-    def TreeviewClick(self,Value):
+    def treeviewClick(self,Value):
         title=Value.data()
         self.table_di.setVisible(title==Utils.getDatablockName('di'))
         self.table_co.setVisible(title==Utils.getDatablockName('co'))
@@ -240,23 +240,23 @@ class ClientUI(QMainWindow):
     # \param value New value
     #
     # UI is only updated from Process() as that runs in UI thread
-    def Update(self,datablock,address,value):
+    def update(self,datablock,address,value):
         with self.lock:
             self.updates.append([datablock,address,value])
 
     ##\brief Timer event to update status and tranceivers in UI thread
-    def Process(self):
+    def process(self):
         # Update UI
         with self.lock:
             for update in self.updates:
-                if update[0]=='di': self.table_di.Update(update[0],update[1],update[2])
-                if update[0]=='co': self.table_co.Update(update[0],update[1],update[2])
-                if update[0]=='hr': self.table_hr.Update(update[0],update[1],update[2])
-                if update[0]=='ir': self.table_ir.Update(update[0],update[1],update[2])
-                self.logging.Update(update[0],update[1],update[2])
+                if update[0]=='di': self.table_di.update(update[0],update[1],update[2])
+                if update[0]=='co': self.table_co.update(update[0],update[1],update[2])
+                if update[0]=='hr': self.table_hr.update(update[0],update[1],update[2])
+                if update[0]=='ir': self.table_ir.update(update[0],update[1],update[2])
+                self.logging.update(update[0],update[1],update[2])
 
         # Update status bar
-        icount,rcount,wcount,duration,iprg,rprg=self.worker.GetStatus()
+        icount,rcount,wcount,duration,iprg,rprg=self.worker.getStatus()
         self.status_rcount.setText('Reads: %d' % rcount)
         self.status_wcount.setText('Writes: %d' % wcount)
         self.status_queue.setText('Queue: %d items' % icount)
@@ -275,32 +275,32 @@ class ClientUI(QMainWindow):
             self.status_read_progress.setFormat('Read cycle completed')
 
     ##\brief Creates menu bar
-    def CreateMenubar(self):
+    def createMenubar(self):
         # Create menu actions
         #saveprofile=lambda x: self.SaveTextToFile('Device Configuration','devcfg',x)
         action_saveprofile=QAction('Save profile',self)
         action_saveprofile.setStatusTip('Save current profile to file')
-        action_saveprofile.triggered.connect(lambda: Utils.saveProfile(self.client.profile,self.GetFilename('Profile','json')))
+        action_saveprofile.triggered.connect(lambda: Utils.saveProfile(self.client.profile,self.getFilename('Profile','json')))
         action_exit=QAction('Exit',self)
         action_exit.triggered.connect(lambda: self.close())
         action_setinterval_1s=QAction('1 second',self,checkable=True,checked=False)
         action_setinterval_1s.setStatusTip('Set polling interval to 1 second')
-        action_setinterval_1s.triggered.connect(lambda: self.worker.SetInterval(1))
+        action_setinterval_1s.triggered.connect(lambda: self.worker.setInterval(1))
         action_setinterval_15s=QAction('15 seconds',self,checkable=True,checked=False)
         action_setinterval_15s.setStatusTip('Set polling interval to 15 seconds')
-        action_setinterval_15s.triggered.connect(lambda: self.worker.SetInterval(15))
+        action_setinterval_15s.triggered.connect(lambda: self.worker.setInterval(15))
         action_setinterval_30s=QAction('30 seconds',self,checkable=True,checked=False)
         action_setinterval_30s.setStatusTip('Set polling interval to 30 seconds')
-        action_setinterval_30s.triggered.connect(lambda: self.worker.SetInterval(30))
+        action_setinterval_30s.triggered.connect(lambda: self.worker.setInterval(30))
         action_setinterval_1m=QAction('1 minute',self,checkable=True,checked=True)
         action_setinterval_1m.setStatusTip('Set polling interval to 1 minute')
-        action_setinterval_1m.triggered.connect(lambda: self.worker.SetInterval(60))
+        action_setinterval_1m.triggered.connect(lambda: self.worker.setInterval(60))
         action_setinterval_none=QAction('Disable',self,checkable=True,checked=False)
         action_setinterval_none.setStatusTip('Disable automatic polling')
-        action_setinterval_none.triggered.connect(lambda: self.worker.SetInterval(None))
+        action_setinterval_none.triggered.connect(lambda: self.worker.setInterval(None))
         action_setinterval_now=QAction('Read now',self)
         action_setinterval_now.setStatusTip('Trigger immidiate read-cycle')
-        action_setinterval_now.triggered.connect(lambda: self.worker.Trigger())
+        action_setinterval_now.triggered.connect(lambda: self.worker.trigger())
         action_setinterval=QActionGroup(self)
         action_setinterval.addAction(action_setinterval_1s)
         action_setinterval.addAction(action_setinterval_15s)
@@ -331,12 +331,11 @@ class ClientUI(QMainWindow):
         menubar.addMenu(helpmenu)
         self.setMenuBar(menubar)
 
-    ##\brief Saves text string to file
+    ##\brief Get filename from user input
     # \param Desc Textual description of output file
     # \param Ext File extension to save as
-    # \param Bin Text string to save
     # \param Returns filename
-    def GetFilename(self,Desc,Ext):
+    def getFilename(self,Desc,Ext):
         options = QFileDialog.Options()
         #options |= QFileDialog.DontUseNativeDialog
         title='Save '+Desc

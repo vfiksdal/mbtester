@@ -35,7 +35,7 @@ class AsyncClientObject():
 
     ##\brief Connect to the server
     # \return True if succsessfully connected
-    async def Connect(self):
+    async def connect(self):
         if self.client:
             await client.connect()
             if not client.connected: client=None
@@ -45,7 +45,7 @@ class AsyncClientObject():
     # \param datablock Datablock to read from (di,co,hr or ir)
     # \param address Register address to read from
     # \return Decoded value, or None upon failure
-    async def Read(self,datablock,address):
+    async def read(self,datablock,address):
         response=None
         try:
             # Parse register information
@@ -72,7 +72,7 @@ class AsyncClientObject():
     # \param datablock Datablock to write to (di,co,hr or ir)
     # \param address Register address to write to
     # \return True upon success
-    async def Write(self,datablock,address,value):
+    async def write(self,datablock,address,value):
         response=None
         try:
             # Parse register information
@@ -96,13 +96,13 @@ class AsyncClientObject():
 
     ##\brief Read all registers from the server
     # \return dictionary of all read values
-    async def Download(self):
+    async def download(self):
         output={}
         output['identity']=self.profile['identity']
         output['datablocks']={}
         for datablock in self.profile['datablocks']:
             for address in self.profile['datablocks'][datablock]:
-                value=await self.Read(datablock,address)
+                value=await self.read(datablock,address)
                 if value:
                     if not datablock in output['datablocks']: output['datablocks'][datablock]={}
                     output['datablocks'][datablock][address]={}
@@ -111,7 +111,7 @@ class AsyncClientObject():
         return output
 
     ##\brief Close connection to server
-    def Close(self):
+    def close(self):
         if self.client: self.client.close()
 
 ##\class ClientObject
@@ -137,7 +137,7 @@ class ClientObject():
 
     ##\brief Connect to the server
     # \return True if succsessfully connected
-    def Connect(self):
+    def connect(self):
         if self.client:
             self.client.connect()
             if not self.client.connected: self.client=None
@@ -147,7 +147,7 @@ class ClientObject():
     # \param datablock Datablock to read from (di,co,hr or ir)
     # \param address Register address to read from
     # \return Decoded value, or None upon failure
-    def Read(self,datablock,address):
+    def read(self,datablock,address):
         response=None
         try:
             # Parse register information
@@ -174,7 +174,7 @@ class ClientObject():
     # \param datablock Datablock to write to (di,co,hr or ir)
     # \param address Register address to write to
     # \return True upon success
-    def Write(self,datablock,address,value):
+    def write(self,datablock,address,value):
         response=None
         try:
             # Parse register information
@@ -198,13 +198,13 @@ class ClientObject():
 
     ##\brief Read all registers from the server
     # \return dictionary of all read values
-    def Download(self):
+    def download(self):
         output={}
         output['identity']=self.profile['identity']
         output['datablocks']={}
         for datablock in self.profile['datablocks']:
             for address in self.profile['datablocks'][datablock]:
-                value=self.Read(datablock,address)
+                value=self.read(datablock,address)
                 if value:
                     if not datablock in output['datablocks']: output['datablocks'][datablock]={}
                     output['datablocks'][datablock][address]={}
@@ -213,7 +213,7 @@ class ClientObject():
         return output
 
     ##\brief Close connection to server
-    def Close(self):
+    def close(self):
         if self.client: self.client.close()
 
 
@@ -230,7 +230,7 @@ class ClientWorker():
         self.ccallbacks=[]
         self.reglist=[]
         self.backlog=[]
-        self.start=None
+        self.started=None
         self.duration=0
         self.rcount=0
         self.wcount=0
@@ -241,22 +241,22 @@ class ClientWorker():
 
     ##\brief Add callback for register write
     # \param callback Callback function(datablock,register,value)
-    def AddWriteCallback(self,callback):
+    def addWriteCallback(self,callback):
         self.wcallbacks.append(callback)
 
     ##\brief Add callback for register write
     # \param callback Callback function(datablock,register,value)
-    def AddReadCallback(self,callback):
+    def addReadCallback(self,callback):
         self.rcallbacks.append(callback)
 
     ##\brief Add callback for completed cycle
     # \param callback Callback function()
-    def AddCompletedCallback(self,callback):
+    def addCompletedCallback(self,callback):
         self.ccallbacks.append(callback)
 
     ##\brief Get status data
     # \return itemcount,readcount,writecount,duration,interval progress,read progress
-    def GetStatus(self):
+    def getStatus(self):
         with self.lock:
             if self.next and self.interval:
                 iprg=int((1-((self.next-time.time())/self.interval))*100)
@@ -270,7 +270,7 @@ class ClientWorker():
 
     ##\brief Change polling interval
     # \param Interval Polling interval in seconds
-    def SetInterval(self,Interval):
+    def setInterval(self,Interval):
         with self.lock:
             if self.interval!=Interval:
                 self.interval=Interval
@@ -282,40 +282,40 @@ class ClientWorker():
                     self.next=None
 
     ##\brief Trigger an immidiate reading cycle
-    def Trigger(self):
+    def trigger(self):
         with self.lock:
             self.next=time.time()
 
     ##\brief Starts background thread
-    def Start(self):
+    def start(self):
         # Start poller thread
         self.running=True
         self.interval=60
         self.next=time.time()
-        self.thread=threading.Thread(target=self.Worker)
+        self.thread=threading.Thread(target=self.worker)
         self.thread.start()
 
     ##\brief Background thread to read/write values
-    def Worker(self):
+    def worker(self):
         while self.running:
             with self.lock:
                 # Get timestamp
                 now=time.time()
 
                 # Check for completed cycle
-                if len(self.backlog)==0 and self.start:
-                    duration=now-self.start
+                if len(self.backlog)==0 and self.started:
+                    duration=now-self.started
                     if self.duration==0: self.duration=duration
                     self.duration=(self.duration*3+(duration))/4.0
                     for callback in self.ccallbacks: callback()
                     logging.info('Cycle completed in %.3fms' % round(self.duration*1000,3))
-                    self.start=None
+                    self.started=None
 
                 # Check for next cycle
                 if self.next and now>=self.next and len(self.backlog)==0:
                     logging.info('Starting new read cycle')
                     self.backlog.extend(self.reglist)
-                    self.start=now
+                    self.started=now
                     if self.interval:
                         self.next=now+self.interval
                     else:
@@ -336,7 +336,7 @@ class ClientWorker():
             if backlog:
                 if backlog[2]==None:
                     # Read register
-                    value=self.client.Read(backlog[0],backlog[1])
+                    value=self.client.read(backlog[0],backlog[1])
                     if value==None:
                         logging.warning('Failed to read register '+str(backlog[1]))
                     else:
@@ -345,7 +345,7 @@ class ClientWorker():
                             callback(backlog[0],backlog[1],value)
                 else:
                     # Write register
-                    if self.client.Write(backlog[0],backlog[1],backlog[2]):
+                    if self.client.write(backlog[0],backlog[1],backlog[2]):
                         self.client.profile['datablocks'][backlog[0]][str(backlog[1])]['value']=backlog[2]
                         for callback in self.wcallbacks:
                             callback(backlog[0],backlog[1],backlog[2])
@@ -357,7 +357,7 @@ class ClientWorker():
     ##\brief Read a register value from server
     # \param datablock Name of datablock (di, co, hr or ir)
     # \param address Register address to read
-    def Read(self,datablock,address):
+    def read(self,datablock,address):
         with self.lock:
             logging.info('Reading register '+datablock+'['+str(address)+']')
             self.backlog.append([datablock,address,None])
@@ -366,13 +366,13 @@ class ClientWorker():
     # \param datablock Name of datablock (di, co, hr or ir)
     # \param address Register address to write to
     # \param value Value to write
-    def Write(self,datablock,address,value):
+    def write(self,datablock,address,value):
         with self.lock:
             logging.info('Writing register '+datablock+'['+str(address)+']='+str(value))
             self.backlog.append([datablock,address,value])
 
     ##\brief Stop all running processes
-    def Close(self):
+    def close(self):
         self.running=False
         self.thread.join()
 
@@ -398,8 +398,8 @@ if __name__ == "__main__":
 
     # Download client data
     client=ClientObject(args)
-    output=client.Download()
-    client.Close()
+    output=client.download()
+    client.close()
 
     # Present options
     print(aboutstring+'\n')
