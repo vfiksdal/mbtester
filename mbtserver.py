@@ -5,8 +5,8 @@
 #
 
 # Import QT modules
-from PyQt5.QtWidgets import QApplication, QMainWindow, QProgressBar, QSplitter, QTreeView, QFrame, QStatusBar, QVBoxLayout, QScrollArea, QMenuBar, QMenu, QAction, QTableWidget, QTableWidgetItem
-from PyQt5.Qt import QStandardItemModel, QHeaderView, QAbstractItemView
+from PyQt5.QtWidgets import QApplication, QMainWindow, QProgressBar, QSplitter, QTreeView, QStatusBar, QScrollArea, QMenuBar, QMenu, QAction
+from PyQt5.Qt import QStandardItemModel
 from PyQt5.QtCore import Qt, QTimer
 
 # Import local modules
@@ -24,9 +24,7 @@ class ServerTableFrame(QFrame):
         super().__init__()
         self.tablewidget=QTableWidget()
         self.tablewidget.verticalHeader().setVisible(False)
-        self.tablewidget.horizontalHeader().setVisible(False)
         self.tablewidget.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        #self.tablewidget.setSelectionMode(QAbstractItemView.NoSelection)
         self.tablewidget.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.tablewidget.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.tablewidget.cellDoubleClicked.connect(self.DoubleClicked)
@@ -37,21 +35,16 @@ class ServerTableFrame(QFrame):
 
         self.datablock=datablock
         self.server=server
-        if self.datablock=='di': self.server.di.cb_write=self.UpdateWrite
-        if self.datablock=='co': self.server.co.cb_write=self.UpdateWrite
-        if self.datablock=='hr': self.server.hr.cb_write=self.UpdateWrite
-        if self.datablock=='ir': self.server.ir.cb_write=self.UpdateWrite
-        if self.datablock=='di': self.server.di.cb_read=self.UpdateRead
-        if self.datablock=='co': self.server.co.cb_read=self.UpdateRead
-        if self.datablock=='hr': self.server.hr.cb_read=self.UpdateRead
-        if self.datablock=='ir': self.server.ir.cb_read=self.UpdateRead
         self.updates=[]
         self.rcount=0
         self.wcount=0
 
+        getattr(self.server,self.datablock).AddWriteCallback(self.UpdateWrite)
+        getattr(self.server,self.datablock).AddReadCallback(self.UpdateRead)
+
         # Populate table
         registers=server.profile['datablocks'][datablock]
-        self.table=[['Description','Type','Access','Address','Value']]
+        self.table=[]
         for register in registers:
             column=[]
             column.append(registers[register]['dsc'])
@@ -62,6 +55,11 @@ class ServerTableFrame(QFrame):
             self.table.append(column)
         self.tablewidget.setRowCount(len(self.table))
         self.tablewidget.setColumnCount(len(self.table[0]))
+        self.tablewidget.setHorizontalHeaderItem(0,QTableWidgetItem('Description'))
+        self.tablewidget.setHorizontalHeaderItem(1,QTableWidgetItem('Type'))
+        self.tablewidget.setHorizontalHeaderItem(2,QTableWidgetItem('Access'))
+        self.tablewidget.setHorizontalHeaderItem(3,QTableWidgetItem('Address'))
+        self.tablewidget.setHorizontalHeaderItem(4,QTableWidgetItem('Value'))
         for i in range(len(self.table)):
             for j in range(len(self.table[i])):
                 self.tablewidget.setItem(i,j,QTableWidgetItem(str(self.table[i][j])))
@@ -75,11 +73,11 @@ class ServerTableFrame(QFrame):
     #
     # This method only tags the changed value. The actual UI will be updated later on
     # the main UI thread -- See UpdateUI().
-    def UpdateWrite(self,address,value):
+    def UpdateWrite(self,datablock,address,value):
         self.updates.append([address,value])
         self.wcount+=1
 
-    def UpdateRead(self,address,value):
+    def UpdateRead(self,datablock,address,value):
         self.rcount+=1
 
     ##\brief Update UI controls
@@ -107,11 +105,7 @@ class ServerTableFrame(QFrame):
         dialog=SetValue(register)
         if dialog.exec_()!=0:
             value=Utils.encodeRegister(register,dialog.value)
-            if self.datablock=='di': self.server.di.setValues(int(address),value)
-            if self.datablock=='co': self.server.co.setValues(int(address),value)
-            if self.datablock=='hr': self.server.hr.setValues(int(address),value)
-            if self.datablock=='ir': self.server.ir.setValues(int(address),value)
-
+            getattr(self.server,self.datablock).setValues(int(address),value)
 
 ##\class ServerUI
 # \brief Main Application class

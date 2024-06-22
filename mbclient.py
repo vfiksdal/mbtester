@@ -9,7 +9,7 @@ from pymodbus import (
     ExceptionResponse,
     ModbusException,
 )
-import logging,sys
+import logging,sys,threading,time
 from common import *
 
 ##\class AsyncClientObject
@@ -216,6 +216,165 @@ class ClientObject():
     def Close(self):
         if self.client: self.client.close()
 
+
+##\class ClientWorker
+# \brief Manages sending and receiving messages with the client object
+class ClientWorker():
+    ##\brief Initialize object
+    # \param client Modbus client object to use (Fully connected)
+    def __init__(self,client):
+        # Parse registerlist
+        self.client=client
+        self.rcallbacks=[]
+        self.wcallbacks=[]
+        self.ccallbacks=[]
+        self.reglist=[]
+        self.backlog=[]
+        self.start=None
+        self.duration=0
+        self.rcount=0
+        self.wcount=0
+        self.lock=threading.Lock()
+        for datablock in self.client.profile['datablocks']:
+            for address in self.client.profile['datablocks'][datablock]:
+                self.reglist.append([datablock,address,None])
+
+    ##\brief Add callback for register write
+    # \param callback Callback function(datablock,register,value)
+    def AddWriteCallback(self,callback):
+        self.wcallbacks.append(callback)
+
+    ##\brief Add callback for register write
+    # \param callback Callback function(datablock,register,value)
+    def AddReadCallback(self,callback):
+        self.rcallbacks.append(callback)
+
+    ##\brief Add callback for completed cycle
+    # \param callback Callback function()
+    def AddCompletedCallback(self,callback):
+        self.ccallbacks.append(callback)
+
+    ##\brief Get status data
+    # \return itemcount,readcount,writecount,duration,interval progress,read progress
+    def GetStatus(self):
+        with self.lock:
+            if self.next and self.interval:
+                iprg=int((1-((self.next-time.time())/self.interval))*100)
+            else:
+                iprg=0
+            if len(self.backlog):
+                rprg=int((1-(len(self.backlog)/len(self.reglist)))*100)
+            else:
+                rprg=0
+            return len(self.backlog),self.rcount,self.wcount,self.duration,iprg,rprg
+
+    ##\brief Change polling interval
+    # \param Interval Polling interval in seconds
+    def SetInterval(self,Interval):
+        with self.lock:
+            if self.interval!=Interval:
+                self.interval=Interval
+                if Interval:
+                    logging.info('Changing polling interval to '+str(Interval)+'s')
+                    self.next=time.time()
+                else:
+                    logging.info('Disabling polling interval')
+                    self.next=None
+
+    ##\brief Trigger an immidiate reading cycle
+    def Trigger(self):
+        with self.lock:
+            self.next=time.time()
+
+    ##\brief Starts background thread
+    def Start(self):
+        # Start poller thread
+        self.running=True
+        self.interval=60
+        self.next=time.time()
+        self.thread=threading.Thread(target=self.Worker)
+        self.thread.start()
+
+    ##\brief Background thread to read/write values
+    def Worker(self):
+        while self.running:
+            with self.lock:
+                # Get timestamp
+                now=time.time()
+
+                # Check for completed cycle
+                if len(self.backlog)==0 and self.start:
+                    duration=now-self.start
+                    if self.duration==0: self.duration=duration
+                    self.duration=(self.duration*3+(duration))/4.0
+                    for callback in self.ccallbacks: callback()
+                    logging.info('Cycle completed in %.3fms' % round(self.duration*1000,3))
+                    self.start=None
+
+                # Check for next cycle
+                if self.next and now>=self.next and len(self.backlog)==0:
+                    logging.info('Starting new read cycle')
+                    self.backlog.extend(self.reglist)
+                    self.start=now
+                    if self.interval:
+                        self.next=now+self.interval
+                    else:
+                        self.next=None
+
+                # Iterate current cycle
+                if len(self.backlog):
+                    backlog=self.backlog[0]
+                    self.backlog=self.backlog[1:]
+                    if backlog[2]==None:
+                        self.rcount+=1
+                    else:
+                        self.wcount+=1
+                else:
+                    backlog=None
+
+            # Execute current cycle
+            if backlog:
+                if backlog[2]==None:
+                    # Read register
+                    value=self.client.Read(backlog[0],backlog[1])
+                    if value==None:
+                        logging.warning('Failed to read register '+str(backlog[1]))
+                    else:
+                        self.client.profile['datablocks'][backlog[0]][str(backlog[1])]['value']=value
+                        for callback in self.rcallbacks:
+                            callback(backlog[0],backlog[1],value)
+                else:
+                    # Write register
+                    if self.client.Write(backlog[0],backlog[1],backlog[2]):
+                        self.client.profile['datablocks'][backlog[0]][str(backlog[1])]['value']=backlog[2]
+                        for callback in self.wcallbacks:
+                            callback(backlog[0],backlog[1],backlog[2])
+                    else:
+                        logging.warning('Failed to write register '+str(backlog[1]))
+            else:
+                time.sleep(0.1)
+
+    ##\brief Read a register value from server
+    # \param datablock Name of datablock (di, co, hr or ir)
+    # \param address Register address to read
+    def Read(self,datablock,address):
+        with self.lock:
+            logging.info('Reading register '+datablock+'['+str(address)+']')
+            self.backlog.append([datablock,address,None])
+
+    ##\brief Write a register value to server
+    # \param datablock Name of datablock (di, co, hr or ir)
+    # \param address Register address to write to
+    # \param value Value to write
+    def Write(self,datablock,address,value):
+        with self.lock:
+            logging.info('Writing register '+datablock+'['+str(address)+']='+str(value))
+            self.backlog.append([datablock,address,value])
+
+    ##\brief Stop all running processes
+    def Close(self):
+        self.running=False
+        self.thread.join()
 
 if __name__ == "__main__":
     # Parse command line options

@@ -5,14 +5,54 @@
 #
 
 # Import QT framework
-from PyQt5.QtWidgets import QDialog, QDialogButtonBox, QComboBox, QLabel, QLineEdit, QListWidget, QPushButton, QVBoxLayout, QMessageBox, QFrame, QFileDialog
-from PyQt5.Qt import QStandardItem
+from PyQt5.QtWidgets import QDialog, QDialogButtonBox, QComboBox, QLabel, QLineEdit, QListWidget, QPushButton, QVBoxLayout, QHBoxLayout, QMessageBox, QFrame, QFileDialog, QTableWidget, QTableWidgetItem
+from PyQt5.Qt import QStandardItem, QHeaderView, QAbstractItemView
 from PyQt5.QtGui import QFont, QColor
 from PyQt5.QtCore import QTimer
 from pymodbus import pymodbus_apply_logging_config
-import datetime
+import datetime,threading
 import serial.tools.list_ports
 from common import *
+
+##\class BrowseBox
+# \brief Class to display a label + edit control + browse button to set paths
+class BrowseBox(QFrame):
+    def __init__(self,label,text=os.getcwd(),locked=False):
+        super().__init__()
+        self.label=QLabel(label)
+        self.edit=QLineEdit(str(text))
+        self.button=QPushButton('...')
+        self.edit.setEnabled(not locked)
+        self.button.setEnabled(not locked)
+        self.button.clicked.connect(self.Browse)
+        layout=QHBoxLayout()
+        ilayout=QHBoxLayout()
+        ilayout.addWidget(self.edit,1)
+        ilayout.addWidget(self.button)
+        layout.addWidget(self.label,1)
+        layout.addLayout(ilayout,1)
+        Utils.setMargins(layout)
+        self.setLayout(layout)
+
+    ##\brief Opens a file dialog to set the path visually
+    def Browse(self):
+        folder = str(QFileDialog.getExistingDirectory(self, "Select Directory"))
+        if len(folder): self.edit.setText(str(folder))
+    
+    ##\brief Changes the label text
+    # \param Text New text to be displayed
+    def SetLabel(self,Text):
+        self.label.setText(Text)
+
+    ##\brief Changes the value
+    # \param Text New value as a string
+    def SetValue(self,Value):
+        self.edit.setText(str(Value))
+
+    ##\brief Get current value
+    # \return String describing a path. Not checked in any way.
+    def GetValue(self):
+        return self.edit.text()
 
 ##\class ConFrame
 # \brief Frame to display realtime log output
@@ -328,3 +368,100 @@ class Connect(QDialog):
             logging.error(str(error))
         except:
             logging.error('An unknown error occurred')
+
+class CSVLogger(QFrame):
+    def __init__(self,profile):
+        super(CSVLogger,self).__init__(None)
+        self.tablewidget=QTableWidget()
+        self.tablewidget.verticalHeader().setVisible(False)
+        self.tablewidget.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.tablewidget.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self.tablewidget.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        self.startbutton=QPushButton('Start logging')
+        self.browse=BrowseBox('Logging directory')
+        layout=QVBoxLayout()
+        layout.addWidget(self.tablewidget,1)
+        layout.addWidget(self.browse)
+        layout.addWidget(self.startbutton)
+        self.setLayout(layout)
+        Utils.setMargins(layout)
+        self.startbutton.clicked.connect(self.StartStop)
+        self.fd=None
+
+        # Populate table
+        self.profile=profile
+        self.table=[]
+        for datablock in profile['datablocks']:
+            datatype=Utils.getDatablockName(datablock)
+            for register in profile['datablocks'][datablock]:
+                registers=profile['datablocks'][datablock]
+                column=[]
+                column.append(datatype)
+                column.append(registers[register]['dsc'])
+                column.append(register)
+                column.append(registers[register]['value'])
+                self.table.append(column)
+        self.tablewidget.setRowCount(len(self.table))
+        self.tablewidget.setColumnCount(len(self.table[0]))
+        self.tablewidget.setHorizontalHeaderItem(0,QTableWidgetItem('Datablock'))
+        self.tablewidget.setHorizontalHeaderItem(1,QTableWidgetItem('Description'))
+        self.tablewidget.setHorizontalHeaderItem(2,QTableWidgetItem('Address'))
+        self.tablewidget.setHorizontalHeaderItem(3,QTableWidgetItem('Value'))
+        for i in range(len(self.table)):
+            for j in range(len(self.table[i])):
+                self.tablewidget.setItem(i,j,QTableWidgetItem(str(self.table[i][j])))
+
+    ##\brief Start or stops logging to disk
+    def StartStop(self):
+        start=self.tablewidget.isEnabled()
+
+        if start:
+            # Open file
+            path=self.browse.GetValue()
+            filename=path+'/'+datetime.datetime.now().strftime('MBTester - %Y%m%d %H%M%S')+'.csv'
+            self.fd=open(filename,'w')
+            if not self.fd:
+                QMessageBox.critical(self,'Error','Could not write to '+path)
+                return
+
+            # Write header
+            csv='Time'
+            items=self.tablewidget.selectedItems()
+            cols=len(self.table[0])
+            for i in range(0,len(items),cols):
+                hdr=items[i+1].text()
+                if hdr=='': hdr=items[i+cols-2].text()
+                hdr.replace(',','_')
+                csv+=','+items[i+1].text()
+            self.fd.write(csv+'\n')
+        elif self.fd:
+            # Close file
+            self.fd.close()
+            self.fd=None
+
+        # Reset dialog
+        self.tablewidget.setEnabled(not start)
+        self.selallbutton.setEnabled(not start)
+        self.clearbutton.setEnabled(not start)
+        self.browse.setEnabled(not start)
+
+    ##\brief Log current values to CSV file
+    def LogItems(self):
+        if self.fd:
+            items=self.tablewidget.selectedItems()
+            cols=len(self.table[0])
+            csv=str(datetime.datetime.now())
+            for i in range(0,len(items),cols):
+                csv+=','+items[i+cols-1].text()
+            self.fd.write(csv+'\n')
+            self.fd.flush()
+
+    ##\brief Update read/write value
+    # \param address Register address that has changed
+    # \param value New register value
+    def Update(self,datablock,address,value):
+        datatype=Utils.getDatablockName(datablock)
+        for j in range(len(self.table)):
+            if self.table[j][0]==datatype and self.table[j][2]==str(address):
+                self.tablewidget.setItem(j,3,QTableWidgetItem(str(value)))
+                break

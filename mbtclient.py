@@ -6,11 +6,11 @@
 
 # Import system modules
 import logging.handlers
-import sys,argparse,logging,threading,time
+import sys,logging
 
 # Import QT modules
-from PyQt5.QtWidgets import QApplication, QMainWindow, QProgressBar, QSplitter, QTreeView, QFrame, QStatusBar, QVBoxLayout, QScrollArea, QMenuBar, QMenu, QAction, QActionGroup, QTableWidget, QTableWidgetItem
-from PyQt5.Qt import QStandardItemModel, QHeaderView, QAbstractItemView
+from PyQt5.QtWidgets import QApplication, QMainWindow, QProgressBar, QSplitter, QTreeView, QStatusBar, QScrollArea, QMenuBar, QMenu, QAction, QActionGroup
+from PyQt5.Qt import QStandardItemModel
 from PyQt5.QtCore import Qt, QTimer
 
 # Import local modules
@@ -27,7 +27,6 @@ class ClientTableFrame(QFrame):
         super().__init__()
         self.tablewidget=QTableWidget()
         self.tablewidget.verticalHeader().setVisible(False)
-        self.tablewidget.horizontalHeader().setVisible(False)
         self.tablewidget.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.tablewidget.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.tablewidget.setEditTriggers(QAbstractItemView.NoEditTriggers)
@@ -36,14 +35,12 @@ class ClientTableFrame(QFrame):
         layout.addWidget(self.tablewidget,1)
         self.setLayout(layout)
         Utils.setMargins(layout)
-        self.lock=threading.Lock()
         self.datablock=datablock
         self.worker=worker
-        self.updates=[]
 
         # Populate table
         registers=worker.client.profile['datablocks'][datablock]
-        self.table=[['Description','Type','Access','Address','Value']]
+        self.table=[]
         for register in registers:
             row=[]
             row.append(registers[register]['dsc'])
@@ -54,35 +51,24 @@ class ClientTableFrame(QFrame):
             self.table.append(row)
         self.tablewidget.setRowCount(len(self.table))
         self.tablewidget.setColumnCount(len(self.table[0]))
+        self.tablewidget.setHorizontalHeaderItem(0,QTableWidgetItem('Description'))
+        self.tablewidget.setHorizontalHeaderItem(1,QTableWidgetItem('Type'))
+        self.tablewidget.setHorizontalHeaderItem(2,QTableWidgetItem('Access'))
+        self.tablewidget.setHorizontalHeaderItem(3,QTableWidgetItem('Address'))
+        self.tablewidget.setHorizontalHeaderItem(4,QTableWidgetItem('Value'))
         for i in range(len(self.table)):
             for j in range(len(self.table[i])):
                 self.tablewidget.setItem(i,j,QTableWidgetItem(str(self.table[i][j])))
 
     ##\brief Update read/write value
+    # \param datablock Datablock to update
     # \param address Register address that has changed
     # \param value New register value
-    #
-    # This method only tags the changed value. The actual UI will be updated later on
-    # the main UI thread -- See UpdateUI().
-    def Update(self,address,value):
-        with self.lock:
-            self.updates.append([address,value])
-
-    ##\brief Update UI controls
-    #
-    # This method updated the UI according to the register changes tracked by Update()
-    def UpdateUI(self):
-        with self.lock:
-            updates=self.updates
-            self.updates=[]
-        for i in range(len(updates)):
-            address=updates[i][0]
-            value=updates[i][1]
-            for j in range(len(self.table)):
-                if self.table[j][3]==str(address):
-                    self.tablewidget.setItem(j,4,QTableWidgetItem(str(value)))
-                    self.worker.client.profile['datablocks'][self.datablock][str(address)]['value']=value
-                    break
+    def Update(self,datablock,address,value):
+        for j in range(len(self.table)):
+            if self.table[j][3]==str(address):
+                self.tablewidget.setItem(j,4,QTableWidgetItem(str(value)))
+                break
 
     ##\brief Event handler for double-clicks. Opens a dialog to write a register value
     # \param row The clicked row
@@ -98,132 +84,6 @@ class ClientTableFrame(QFrame):
         if dialog.exec_()!=0:
             register['value']=dialog.value
             self.worker.Write(self.datablock,address,dialog.value)
-
-##\class ClientWorker
-# \brief Manages sending and receiving messages with the client object
-class ClientWorker():
-    ##\brief Initialize object
-    # \param client Modbus client object to use (Fully connected)
-    # \param callback Callback function to update register values
-    def __init__(self,client,callback):
-        # Parse registerlist
-        self.client=client
-        self.callback=callback
-        self.reglist=[]
-        self.backlog=[]
-        self.start=None
-        self.duration=0
-        self.rcount=0
-        self.wcount=0
-        self.lock=threading.Lock()
-        for datablock in self.client.profile['datablocks']:
-            for address in self.client.profile['datablocks'][datablock]:
-                self.reglist.append([datablock,address,None])
-
-    ##\brief Get status data
-    # \return itemcount,readcount,writecount,duration,interval progress,read progress
-    def GetStatus(self):
-        with self.lock:
-            if self.next and self.interval:
-                iprg=int((1-((self.next-time.time())/self.interval))*100)
-            else:
-                iprg=0
-            if len(self.backlog):
-                rprg=int((1-(len(self.backlog)/len(self.reglist)))*100)
-            else:
-                rprg=0
-            return len(self.backlog),self.rcount,self.wcount,self.duration,iprg,rprg
-
-    ##\brief Change polling interval
-    # \param Interval Polling interval in seconds
-    def SetInterval(self,Interval):
-        with self.lock:
-            if self.interval!=Interval:
-                self.interval=Interval
-                if Interval:
-                    logging.info('Changing polling interval to '+str(Interval)+'s')
-                    self.next=time.time()
-                else:
-                    logging.info('Disabling polling interval')
-                    self.next=None
-
-    ##\brief Trigger an immidiate reading cycle
-    def Trigger(self):
-        with self.lock:
-            self.next=time.time()
-
-    ##\brief Starts background thread
-    def Start(self):
-        # Start poller thread
-        self.running=True
-        self.interval=60
-        self.next=time.time()
-        self.thread=threading.Thread(target=self.Worker)
-        self.thread.start()
-
-    ##\brief Background thread to read/write values
-    def Worker(self):
-        while self.running:
-            with self.lock:
-                now=time.time()
-                if self.next and now>=self.next and len(self.backlog)==0:
-                    logging.info('Starting new read cycle')
-                    self.backlog.extend(self.reglist)
-                    self.start=now
-                    if self.interval:
-                        self.next=now+self.interval
-                    else:
-                        self.next=None
-                if len(self.backlog):
-                    backlog=self.backlog[0]
-                    self.backlog=self.backlog[1:]
-                    if backlog[2]==None:
-                        self.rcount+=1
-                    else:
-                        self.wcount+=1
-                else:
-                    if self.start:
-                        duration=now-self.start
-                        if self.duration==0: self.duration=duration
-                        self.duration=(self.duration*3+(duration))/4.0
-                        logging.info('Cycle completed in %.3fms' % round(self.duration*1000,3))
-                        self.start=None
-                    backlog=None
-
-            if backlog:
-                if backlog[2]==None:
-                    value=self.client.Read(backlog[0],backlog[1])
-                else:
-                    value=None
-                    if self.client.Write(backlog[0],backlog[1],backlog[2]): value=backlog[2]
-                if value==None:
-                    logging.warning('Failed to read/write register '+str(backlog[1]))
-                elif self.callback:
-                    self.callback(backlog[0],backlog[1],value)
-            else:
-                time.sleep(0.1)
-
-    ##\brief Read a register value from server
-    # \param datablock Name of datablock (di, co, hr or ir)
-    # \param address Register address to read
-    def Read(self,datablock,address):
-        with self.lock:
-            logging.info('Reading register '+datablock+'['+str(address)+']')
-            self.backlog.append([datablock,address,None])
-
-    ##\brief Write a register value to server
-    # \param datablock Name of datablock (di, co, hr or ir)
-    # \param address Register address to write to
-    # \param value Value to write
-    def Write(self,datablock,address,value):
-        with self.lock:
-            logging.info('Writing register '+datablock+'['+str(address)+']='+str(value))
-            self.backlog.append([datablock,address,value])
-
-    ##\brief Stop all running processes
-    def Close(self):
-        self.running=False
-        self.thread.join()
 
 ##\class ClientUI
 # \brief Main Application class
@@ -245,7 +105,9 @@ class ClientUI(QMainWindow):
             else:
                 logging.error('User aborted')
                 sys.exit()
-        self.worker=ClientWorker(self.client,self.Update)
+        self.worker=ClientWorker(self.client)
+        self.worker.AddReadCallback(self.Update)
+        self.worker.AddWriteCallback(self.Update)
         self.conframe.showMessagebox(False)
         self.conframe.Clear()
         for line in aboutstring.split('\n'):
@@ -253,6 +115,10 @@ class ClientUI(QMainWindow):
         self.conframe.AddText('')
         for line in Utils.reportConfig(args).split('\n'):
             self.conframe.AddText(line)
+
+        # Prepare update mechanism
+        self.lock=threading.Lock()
+        self.updates=[]
 
         # Add statusbar
         self.statusbar=QStatusBar()
@@ -286,18 +152,19 @@ class ClientUI(QMainWindow):
         self.treeview.setHeaderHidden(True)
         treemodel=QStandardItemModel()
         rootnode=treemodel.invisibleRootItem()
-        logitem=StandardItem('Console')
-        rootnode.appendRow(StandardItem('Discrete inputs'))
-        rootnode.appendRow(StandardItem('Coils'))
-        rootnode.appendRow(StandardItem('Holding registers'))
-        rootnode.appendRow(StandardItem('Input registers'))
-        rootnode.appendRow(logitem)
+        conitem=StandardItem('Console')
+        rootnode.appendRow(StandardItem(Utils.getDatablockName('di')))
+        rootnode.appendRow(StandardItem(Utils.getDatablockName('co')))
+        rootnode.appendRow(StandardItem(Utils.getDatablockName('hr')))
+        rootnode.appendRow(StandardItem(Utils.getDatablockName('ir')))
+        rootnode.appendRow(StandardItem('Logging'))
+        rootnode.appendRow(conitem)
 
         # Wrap up treeview
         self.treeview.setModel(treemodel)
         self.treeview.expandAll()
         self.treeview.clicked.connect(self.TreeviewClick)
-        index=treemodel.indexFromItem(logitem)
+        index=treemodel.indexFromItem(conitem)
         self.treeview.setCurrentIndex(index)
 
         # Load frames for registers
@@ -310,6 +177,11 @@ class ClientUI(QMainWindow):
         self.table_hr.setVisible(False)
         self.table_ir.setVisible(False)
         self.worker.Start()
+
+        # Load frame for logging
+        self.logging=CSVLogger(self.client.profile)
+        self.logging.setVisible(False)
+        self.worker.AddCompletedCallback(self.logging.LogItems)
 
         # Create menubar
         self.CreateMenubar()
@@ -328,6 +200,7 @@ class ClientUI(QMainWindow):
         layout.addWidget(self.table_co)
         layout.addWidget(self.table_hr)
         layout.addWidget(self.table_ir)
+        layout.addWidget(self.logging)
         widget.setLayout(layout)
         scrollarea.setWidgetResizable(True)
         scrollarea.setWidget(widget)
@@ -354,29 +227,33 @@ class ClientUI(QMainWindow):
     # \param Value The clicked item
     def TreeviewClick(self,Value):
         title=Value.data()
-        self.table_di.setVisible(title=='Discrete inputs')
-        self.table_co.setVisible(title=='Coils')
-        self.table_hr.setVisible(title=='Holding registers')
-        self.table_ir.setVisible(title=='Input registers')
+        self.table_di.setVisible(title==Utils.getDatablockName('di'))
+        self.table_co.setVisible(title==Utils.getDatablockName('co'))
+        self.table_hr.setVisible(title==Utils.getDatablockName('hr'))
+        self.table_ir.setVisible(title==Utils.getDatablockName('ir'))
+        self.logging.setVisible(title=='Logging')
         self.conframe.setVisible(title=='Console')
 
     ##\brief Callback to register updated values from client
     # \param datablock Type of data to update
     # \param address Regisster address
     # \param value New value
+    #
+    # UI is only updated from Process() as that runs in UI thread
     def Update(self,datablock,address,value):
-        if datablock=='di': self.table_di.Update(address,value)
-        if datablock=='co': self.table_co.Update(address,value)
-        if datablock=='hr': self.table_hr.Update(address,value)
-        if datablock=='ir': self.table_ir.Update(address,value)
+        with self.lock:
+            self.updates.append([datablock,address,value])
 
     ##\brief Timer event to update status and tranceivers in UI thread
     def Process(self):
-        # Update registers
-        self.table_di.UpdateUI()
-        self.table_co.UpdateUI()
-        self.table_hr.UpdateUI()
-        self.table_ir.UpdateUI()
+        # Update UI
+        with self.lock:
+            for update in self.updates:
+                if update[0]=='di': self.table_di.Update(update[0],update[1],update[2])
+                if update[0]=='co': self.table_co.Update(update[0],update[1],update[2])
+                if update[0]=='hr': self.table_hr.Update(update[0],update[1],update[2])
+                if update[0]=='ir': self.table_ir.Update(update[0],update[1],update[2])
+                self.logging.Update(update[0],update[1],update[2])
 
         # Update status bar
         icount,rcount,wcount,duration,iprg,rprg=self.worker.GetStatus()
