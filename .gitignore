@@ -7,3 +7,5 @@ build/
 dist/
 doxy/
 *.spec
+*.exe
+*.zip
