@@ -372,9 +372,7 @@ class ClientWorker():
 
 if __name__ == "__main__":
     # Parse command line options
-    aboutstring=App.getName()+' Client '+App.getVersion()+'\n'
-    aboutstring+='Client for MODBUS Testing\n'
-    aboutstring+='Vegard Fiksdal(C)2024'
+    aboutstring=App.getAbout('client','CLI client for MODBUS Testing')
     args=App.parseArguments(aboutstring,-1)
 
     # Check for profile

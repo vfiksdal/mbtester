@@ -4,50 +4,110 @@
 # Vegard Fiksdal (C) 2024
 #
 import PyInstaller.__main__
-import shutil
+import shutil,sys
 from common import *
 
-print('Deleting old build environment')
-try:
-    shutil.rmtree('build')
-except:
-    pass
-try:
-    shutil.rmtree('dist')
-except:
-    pass
+def preclean():
+    print('Deleting old build environment')
+    try:
+        shutil.rmtree('build')
+    except:
+        pass
+    try:
+        shutil.rmtree('dist')
+    except:
+        pass
 
-print('Building v'+App.getVersion())
-PyInstaller.__main__.run(['qmbtserver.py','--onefile','--noconsole','--icon','extras/mbtester.ico','--name','qmbtserver'])
-PyInstaller.__main__.run(['qmbtclient.py','--onefile','--noconsole','--icon','extras/mbtester.ico','--name','qmbtclient'])
-PyInstaller.__main__.run(['mbtserver.py','--onefile','--name','mbtserver'])
-PyInstaller.__main__.run(['mbtclient.py','--onefile','--name','mbtclient'])
+def build_bin():
+    print('Building v'+App.getVersion())
+    PyInstaller.__main__.run(['qmbtserver.py','--onefile','--noconsole','--icon','extras/mbtester.ico','--name','qmbtserver'])
+    PyInstaller.__main__.run(['qmbtclient.py','--onefile','--noconsole','--icon','extras/mbtester.ico','--name','qmbtclient'])
+    PyInstaller.__main__.run(['mbtserver.py','--onefile','--name','mbtserver'])
+    PyInstaller.__main__.run(['mbtclient.py','--onefile','--name','mbtclient'])
 
-print('Copying accompanying files')
-shutil.copy('extras/mbtester.ico','dist')
-shutil.copy('README.md','dist')
-shutil.copy('LICENSE','dist')
-for file in os.listdir('.'):
-    if file.upper().endswith('.JSON'):
-        shutil.copy(file,'dist')
+    print('Copying accompanying files')
+    shutil.copy('extras/mbtester.ico','dist')
+    shutil.copy('README.md','dist')
+    shutil.copy('LICENSE','dist')
+    for file in os.listdir('.'):
+        if file.upper().endswith('.JSON'):
+            shutil.copy(file,'dist')
 
-print('Archiving output files')
-shutil.make_archive('mbtester-'+App.getVersion(), 'zip', 'dist')
-shutil.move('mbtester-'+App.getVersion()+'.zip','dist')
+def build_zip():
+    print('Archiving output files')
+    shutil.make_archive('mbtester-'+App.getVersion(), 'zip', 'dist')
+    #shutil.move('mbtester-'+App.getVersion()+'.zip','dist')
 
-print('Making installer')
-nsispath = os.environ.get("PROGRAMFILES(X86)")+'\\NSIS\\makensis.exe'
-if os.path.exists(nsispath):
-    shutil.copy('extras\\mbtester.nsi','dist')
-    os.system('"'+nsispath+'"'+' /NOCD dist\\mbtester.nsi')
-    shutil.move('mbtester.exe','mbtester-'+App.getVersion()+'.exe')
-    shutil.move('mbtester-'+App.getVersion()+'.exe','dist')
+def build_installer():
+    print('Making installer')
+    nsispath = os.environ.get("PROGRAMFILES(X86)")+'\\NSIS\\makensis.exe'
+    if os.path.exists(nsispath):
+        shutil.copy('extras\\mbtester.nsi','dist')
+        os.system('"'+nsispath+'"'+' /NOCD dist\\mbtester.nsi')
+        shutil.move('mbtester.exe','mbtester-'+App.getVersion()+'.exe')
+        #shutil.move('mbtester-'+App.getVersion()+'.exe','dist')
+    else:
+        print('Could not find NSIS -- Skipping')
+
+def postclean():
+    print('Cleaning intermediary files')
+    for file in os.listdir('.'):
+        if file.upper().endswith('.SPEC'):
+            os.unlink(file)
+
+def mrproper():
+    os.system('git clean -d -x -n')
+    if input('Type yes to confirm: ').upper()=='YES':
+        os.system('git clean -d -x -f')
+    else:
+        print('Deep clean was skipped')
+
+    print('Ivalid build parameter: '+arg)
+    print('Use '+sys.argv[0]+' --help for usage information')
+if len(sys.argv)==2:
+    arg=sys.argv[1]
 else:
-    print('Could not find NSIS -- Skipping')
+    print('Ivalid build parameters: '+str(sys.argv[1:]))
+    print('')
+    arg='--help'
 
-print('Cleaning house')
-for file in os.listdir('.'):
-    if file.upper().endswith('.SPEC'):
-        os.unlink(file)
-
-print('Done!')
+if arg=='--build':
+    preclean()
+    build_bin()
+    postclean()
+elif arg=='--archive':
+    preclean()
+    build_bin()
+    build_zip()
+    postclean()
+elif arg=='--release':
+    preclean()
+    build_bin()
+    build_installer()
+    postclean()
+elif arg=='--all':
+    preclean()
+    build_bin()
+    build_zip()
+    build_installer()
+    postclean()
+elif arg=='--clean':
+    preclean()
+    postclean()
+elif arg=='--mrproper':
+    mrproper()
+elif arg=='--help':
+    print('MBTester build script')
+    print('Usage: '+sys.argv[0]+' SWITCH')
+    print('')
+    print('Switches:')
+    print('\t--build\t\tBuild windows binaries')
+    print('\t--release\tBuild windows installer')
+    print('\t--archive\tBuild windows binaries and zip them')
+    print('\t--all\t\tBuild windows installer and zip archive')
+    print('\t--clean\t\tClean build directories')
+    print('\t--mrproper\tClean up repo')
+    print('')
+else:
+    print('Ivalid build parameter: '+arg)
+    print('Use '+sys.argv[0]+' --help for usage information')

@@ -287,6 +287,7 @@ class ServerUI(QMainWindow):
 
 
 # Simple identification
+aboutstring=App.getAbout('server','GUI server for MODBUS Testing')
 application=App.getName()+' Server '+App.getVersion()
 aboutstring=application+'\n'
 aboutstring+='GUI server for MODBUS Testing\n'

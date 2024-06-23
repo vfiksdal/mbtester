@@ -19,7 +19,7 @@ class App():
     ##\brief Get application version
     # \return Current version as a string
     def getVersion():
-        return '0.3.2'
+        return '0.3.3'
 
     ##\brief Get application title
     # \return Application title as a string
@@ -94,9 +94,13 @@ class Profiles():
                 pass
 
         # Add user specified and cwd paths
-        if args and os.path.dirname(args.profile):
-            path.append(os.path.dirname(os.path.abspath(args.profile)))
-        path.append(os.path.dirname(os.path.abspath(sys.argv[0])))
+        if os.path.dirname(args.profile):
+            upath=os.path.dirname(os.path.abspath(args.profile))
+            if not upath in path:
+                path.append(upath)
+        cwd=os.path.dirname(os.path.abspath(sys.argv[0]))
+        if not cwd in path:
+            path.append(cwd)
 
         # Assert separators
         for i in range(len(path)):

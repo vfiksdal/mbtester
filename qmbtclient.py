@@ -345,7 +345,7 @@ class ClientUI(QMainWindow):
 
 
 # Load application window and start application
-aboutstring=App.getAbout('client','GUI client for MODBUS Testing\n')
+aboutstring=App.getAbout('client','GUI client for MODBUS Testing')
 args=App.parseArguments(aboutstring,-1)
 app=QApplication(sys.argv)
 window=ClientUI(args)

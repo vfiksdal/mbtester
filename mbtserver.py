@@ -94,9 +94,7 @@ class ServerObject(AsyncServerObject):
 
 if __name__ == "__main__":
     # Parse command line options
-    aboutstring=App.getName()+' Server '+App.getVersion()+'\n'
-    aboutstring+='Server for MODBUS Testing\n'
-    aboutstring+='Vegard Fiksdal(C)2024'
+    aboutstring=App.getAbout('server','CLI server for MODBUS Testing')
     args = App.parseArguments(aboutstring)
 
     # Check for profile
