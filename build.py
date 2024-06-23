@@ -2,7 +2,6 @@ import PyInstaller.__main__
 import shutil
 from common import *
 
-'''
 print('Deleting old build environment')
 try:
     shutil.rmtree('build')
@@ -28,7 +27,6 @@ shutil.copy('LICENSE','dist')
 
 print('Archiving output files')
 shutil.make_archive('mbtester-'+Utils.getAppVersion(), 'zip', 'dist')
-'''
 
 print('Making installer')
 nsispath = os.environ.get("PROGRAMFILES(X86)")+'\\NSIS\\makensis.exe'

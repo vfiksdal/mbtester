@@ -224,10 +224,10 @@ class ServerUI(QMainWindow):
     # \param Value The clicked item
     def treeviewClick(self,Value):
         title=Value.data()
-        self.table_di.setVisible(title==StandardItem(Utils.getDatablockName('di')))
-        self.table_co.setVisible(title==StandardItem(Utils.getDatablockName('co')))
-        self.table_hr.setVisible(title==StandardItem(Utils.getDatablockName('hr')))
-        self.table_ir.setVisible(title==StandardItem(Utils.getDatablockName('ir')))
+        self.table_di.setVisible(title==Utils.getDatablockName('di'))
+        self.table_co.setVisible(title==Utils.getDatablockName('co'))
+        self.table_hr.setVisible(title==Utils.getDatablockName('hr'))
+        self.table_ir.setVisible(title==Utils.getDatablockName('ir'))
         self.conframe.setVisible(title=='Console')
 
     ##\brief Timer event to update status and tranceivers
