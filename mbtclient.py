@@ -262,18 +262,23 @@ class ClientWorker():
                 rprg=0
             return len(self.backlog),self.rcount,self.wcount,self.duration,iprg,rprg
 
+    ##\brief Get current polling interval
+    # \return Polling interval in seconds
+    def getInterval(self):
+        return self.interval
+
     ##\brief Change polling interval
     # \param Interval Polling interval in seconds
     def setInterval(self,Interval):
         with self.lock:
             if self.interval!=Interval:
                 self.interval=Interval
-                if Interval:
-                    logging.info('Changing polling interval to '+str(Interval)+'s')
-                    self.next=time.time()
-                else:
+                if Interval==None:
                     logging.info('Disabling polling interval')
                     self.next=None
+                else:
+                    logging.info('Changing polling interval to '+str(Interval)+'s')
+                    self.next=time.time()
 
     ##\brief Trigger an immidiate reading cycle
     def trigger(self):
@@ -310,10 +315,10 @@ class ClientWorker():
                     logging.info('Starting new read cycle')
                     self.backlog.extend(self.reglist)
                     self.started=now
-                    if self.interval:
-                        self.next=now+self.interval
-                    else:
+                    if self.interval==None:
                         self.next=None
+                    else:
+                        self.next=now+self.interval
 
                 # Iterate current cycle
                 if len(self.backlog):
