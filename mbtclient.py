@@ -19,7 +19,7 @@ class AsyncClientObject():
     # \param Parsed commandline arguments
     async def __init__(self,args):
         # Parse profiles
-        self.profile=Utils.loadProfile(args.profile)
+        self.profile=Profiles.loadProfile(args,args.profile)
         self.slaveid=args.slaveid
         self.offset=args.offset
 
@@ -48,7 +48,7 @@ class AsyncClientObject():
             # Parse register information
             registerdata=self.profile['datablocks'][datablock][address]
             registeraddress=int(address)+self.offset
-            count=Utils.registersPerValue(registerdata)
+            count=Registers.registersPerValue(registerdata)
 
             # Execute request
             if datablock=='di': response = await self.client.read_discrete_inputs(registeraddress,count,self.slaveid)
@@ -62,7 +62,7 @@ class AsyncClientObject():
             logging.warning(str(response))
             return None
         if datablock=='di' or datablock=='co': return response.bits[0]
-        if datablock=='hr' or datablock=='ir': return Utils.decodeRegister(registerdata,response.registers)
+        if datablock=='hr' or datablock=='ir': return Registers.decodeRegister(registerdata,response.registers)
         return None
 
     ##\brief Write registers to the server
@@ -75,7 +75,7 @@ class AsyncClientObject():
             # Parse register information
             registerdata=self.profile['datablocks'][datablock][address]
             registeraddress=int(address)+self.offset
-            values=Utils.encodeRegister(registerdata,value)
+            values=Registers.encodeRegister(registerdata,value)
 
             # Execute request
             if datablock=='co': response = await self.client.write_coil(registeraddress,value,self.slaveid)
@@ -118,7 +118,7 @@ class ClientObject():
     # \param Parsed commandline arguments
     def __init__(self,args):
         # Parse profiles
-        self.profile=Utils.loadProfile(args.profile)
+        self.profile=Profiles.loadProfile(args,args.profile)
         self.slaveid=args.slaveid
         self.offset=args.offset
 
@@ -147,7 +147,7 @@ class ClientObject():
             # Parse register information
             registerdata=self.profile['datablocks'][datablock][address]
             registeraddress=int(address)+self.offset
-            count=Utils.registersPerValue(registerdata)
+            count=Registers.registersPerValue(registerdata)
 
             # Execute request
             if datablock=='di': response = self.client.read_discrete_inputs(registeraddress,count,self.slaveid)
@@ -161,7 +161,7 @@ class ClientObject():
             logging.warning(str(response))
             return None
         if datablock=='di' or datablock=='co': return response.bits[0]
-        if datablock=='hr' or datablock=='ir': return Utils.decodeRegister(registerdata,response.registers)
+        if datablock=='hr' or datablock=='ir': return Registers.decodeRegister(registerdata,response.registers)
         return None
 
     ##\brief Write registers to the server
@@ -174,7 +174,7 @@ class ClientObject():
             # Parse register information
             registerdata=self.profile['datablocks'][datablock][address]
             registeraddress=int(address)+self.offset
-            values=Utils.encodeRegister(registerdata,value)
+            values=Registers.encodeRegister(registerdata,value)
 
             # Execute request
             if datablock=='co': response = self.client.write_coil(registeraddress,value,self.slaveid)
@@ -372,16 +372,16 @@ class ClientWorker():
 
 if __name__ == "__main__":
     # Parse command line options
-    aboutstring=Utils.getAppName()+' Client '+Utils.getAppVersion()+'\n'
+    aboutstring=App.getName()+' Client '+App.getVersion()+'\n'
     aboutstring+='Client for MODBUS Testing\n'
     aboutstring+='Vegard Fiksdal(C)2024'
-    args=Utils.parseArguments(aboutstring,-1)
+    args=App.parseArguments(aboutstring,-1)
 
     # Check for profile
     if len(args.profile)==0:
         print('Please set a profile to use (See -p or --profile parameter)')
         sys.exit()
-    elif not os.path.exists(args.profile):
+    elif not Profiles.getProfile(args,args.profile):
         print('Profile file '+args.profile+' does not exist')
         sys.exit()
 
@@ -397,7 +397,7 @@ if __name__ == "__main__":
 
     # Present options
     print(aboutstring+'\n')
-    print(Utils.reportConfig(args))
+    print(App.reportConfig(args))
 
     # Print result
     output=json.dumps(output,indent=4)

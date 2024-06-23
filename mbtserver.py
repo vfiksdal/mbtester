@@ -29,7 +29,7 @@ class AsyncServerObject():
     # \param args Arguments to configure the object
     def __init__(self,args):
         # Parse profile and contexts
-        self.profile=Utils.loadProfile(args.profile)
+        self.profile=Profiles.loadProfile(args,args.profile)
         self.di=DataBlock(self.profile,'di')
         self.co=DataBlock(self.profile,'co')
         self.hr=DataBlock(self.profile,'hr')
@@ -94,17 +94,17 @@ class ServerObject(AsyncServerObject):
 
 if __name__ == "__main__":
     # Parse command line options
-    aboutstring=Utils.getAppName()+' Server '+Utils.getAppVersion()+'\n'
+    aboutstring=App.getName()+' Server '+App.getVersion()+'\n'
     aboutstring+='Server for MODBUS Testing\n'
     aboutstring+='Vegard Fiksdal(C)2024'
-    args = Utils.parseArguments(aboutstring)
+    args = App.parseArguments(aboutstring)
 
     # Check for profile
     if len(args.profile)==0:
         print('Please set a profile to use (See -p or --profile parameter)')
         sys.exit()
-    elif not os.path.exists(args.profile):
-        print('Profile file '+args.profile+' does not exist')
+    elif not Profiles.getProfile(args,args.profile):
+        print('Profile file '+args.profile+' not found')
         sys.exit()
 
     # Enable logging
@@ -116,7 +116,7 @@ if __name__ == "__main__":
 
     # Present options
     print(aboutstring+'\n')
-    print(Utils.reportConfig(args))
+    print(App.reportConfig(args))
 
     # Run async server
     server=AsyncServerObject(args)

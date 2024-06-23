@@ -31,7 +31,7 @@ class BrowseBox(QFrame):
         ilayout.addWidget(self.button)
         layout.addWidget(self.label,1)
         layout.addLayout(ilayout,1)
-        Utils.setMargins(layout)
+        Utilities.setMargins(layout)
         self.setLayout(layout)
 
     ##\brief Opens a file dialog to set the path visually
@@ -83,7 +83,7 @@ class ConFrame(QFrame):
         layout.addWidget(self.clearbutton)
         layout.addWidget(self.savebutton)
         self.setLayout(layout)
-        Utils.setMargins(layout)
+        Utilities.setMargins(layout)
 
         # Use a timer to process data from the queue
         self.timer=QTimer()
@@ -193,7 +193,7 @@ class SetValue(QDialog):
     ##\brief Validates the user input
     def set(self):
         try:
-            self.value=Utils.castRegister(self.register,self.valueedit.text())
+            self.value=Registers.castRegister(self.register,self.valueedit.text())
             super().accept()
         except Exception as error:
             QMessageBox.critical(self,'Error',str(error))
@@ -258,10 +258,10 @@ class Connect(QDialog):
 
         # Enumerate profiles
         default=0
-        self.profiles=Utils.listProfiles()
+        self.profiles=Profiles.listProfiles(args)
         for profile in self.profiles:
-            if os.path.abspath(args.profile).upper()==profile.upper(): default=self.profilelist.count()
-            self.profilelist.addItem(os.path.basename(profile)[:-5])
+            if os.path.basename(args.profile).upper()==profile[1].upper(): default=self.profilelist.count()
+            self.profilelist.addItem(os.path.basename(profile[1])[:-5])
         self.profilelist.setCurrentIndex(default)
 
         # Enumerate ports
@@ -295,7 +295,7 @@ class Connect(QDialog):
         self.setDefault(self.commlist,args.comm)
         self.setDefault(self.framerlist,args.framer)
         self.setDefault(self.baudlist,args.baudrate)
-        self.setDefault(self.paritylist,Utils.getParityName(args.parity))
+        self.setDefault(self.paritylist,Utilities.getParityName(args.parity))
 
 
     ##\brief Set dropdown selection to a default value
@@ -335,7 +335,8 @@ class Connect(QDialog):
     def open(self):
         # Try to connect
         try:
-            self.args.profile = self.profiles[self.profilelist.currentIndex()]
+            profiles=self.profiles[self.profilelist.currentIndex()]
+            self.args.profile = profiles[0]+profiles[1]
             self.args.comm = self.commlist.currentText().lower()
             self.args.framer = self.framerlist.currentText().lower()
             if self.args.comm == 'serial':
@@ -380,7 +381,7 @@ class CSVLogger(QFrame):
         layout.addWidget(self.browse)
         layout.addWidget(self.startbutton)
         self.setLayout(layout)
-        Utils.setMargins(layout)
+        Utilities.setMargins(layout)
         self.startbutton.clicked.connect(self.startStop)
         self.fd=None
 
@@ -388,7 +389,7 @@ class CSVLogger(QFrame):
         self.profile=profile
         self.table=[]
         for datablock in profile['datablocks']:
-            datatype=Utils.getDatablockName(datablock)
+            datatype=Utilities.getDatablockName(datablock)
             for register in profile['datablocks'][datablock]:
                 registers=profile['datablocks'][datablock]
                 column=[]
@@ -461,7 +462,7 @@ class CSVLogger(QFrame):
     # \param address Register address that has changed
     # \param value New register value
     def update(self,datablock,address,value):
-        datatype=Utils.getDatablockName(datablock)
+        datatype=Utilities.getDatablockName(datablock)
         for j in range(len(self.table)):
             if self.table[j][0]==datatype and self.table[j][2]==str(address):
                 self.tablewidget.setItem(j,3,QTableWidgetItem(str(value)))

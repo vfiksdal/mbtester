@@ -17,7 +17,7 @@ try:
 except:
     pass
 
-print('Building v'+Utils.getAppVersion())
+print('Building v'+App.getVersion())
 PyInstaller.__main__.run(['qmbtserver.py','--onefile','--noconsole','--icon','extras/mbtester.ico','--name','qmbtserver'])
 PyInstaller.__main__.run(['qmbtclient.py','--onefile','--noconsole','--icon','extras/mbtester.ico','--name','qmbtclient'])
 PyInstaller.__main__.run(['mbtserver.py','--onefile','--name','mbtserver'])
@@ -32,16 +32,16 @@ for file in os.listdir('.'):
         shutil.copy(file,'dist')
 
 print('Archiving output files')
-shutil.make_archive('mbtester-'+Utils.getAppVersion(), 'zip', 'dist')
-shutil.move('mbtester-'+Utils.getAppVersion()+'.zip','dist')
+shutil.make_archive('mbtester-'+App.getVersion(), 'zip', 'dist')
+shutil.move('mbtester-'+App.getVersion()+'.zip','dist')
 
 print('Making installer')
 nsispath = os.environ.get("PROGRAMFILES(X86)")+'\\NSIS\\makensis.exe'
 if os.path.exists(nsispath):
     shutil.copy('extras\\mbtester.nsi','dist')
     os.system('"'+nsispath+'"'+' /NOCD dist\\mbtester.nsi')
-    shutil.move('mbtester.exe','mbtester-'+Utils.getAppVersion()+'.exe')
-    shutil.move('mbtester-'+Utils.getAppVersion()+'.exe','dist')
+    shutil.move('mbtester.exe','mbtester-'+App.getVersion()+'.exe')
+    shutil.move('mbtester-'+App.getVersion()+'.exe','dist')
 else:
     print('Could not find NSIS -- Skipping')
 

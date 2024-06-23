@@ -34,7 +34,7 @@ class ClientTableFrame(QFrame):
         layout=QVBoxLayout()
         layout.addWidget(self.tablewidget,1)
         self.setLayout(layout)
-        Utils.setMargins(layout)
+        Utilities.setMargins(layout)
         self.datablock=datablock
         self.worker=worker
 
@@ -113,7 +113,7 @@ class ClientUI(QMainWindow):
         for line in aboutstring.split('\n'):
             self.conframe.addText(line)
         self.conframe.addText('')
-        for line in Utils.reportConfig(args).split('\n'):
+        for line in App.reportConfig(args).split('\n'):
             self.conframe.addText(line)
 
         # Prepare update mechanism
@@ -153,10 +153,10 @@ class ClientUI(QMainWindow):
         treemodel=QStandardItemModel()
         rootnode=treemodel.invisibleRootItem()
         conitem=StandardItem('Console')
-        rootnode.appendRow(StandardItem(Utils.getDatablockName('di')))
-        rootnode.appendRow(StandardItem(Utils.getDatablockName('co')))
-        rootnode.appendRow(StandardItem(Utils.getDatablockName('hr')))
-        rootnode.appendRow(StandardItem(Utils.getDatablockName('ir')))
+        rootnode.appendRow(StandardItem(Utilities.getDatablockName('di')))
+        rootnode.appendRow(StandardItem(Utilities.getDatablockName('co')))
+        rootnode.appendRow(StandardItem(Utilities.getDatablockName('hr')))
+        rootnode.appendRow(StandardItem(Utilities.getDatablockName('ir')))
         rootnode.appendRow(StandardItem('Logging'))
         rootnode.appendRow(conitem)
 
@@ -209,7 +209,7 @@ class ClientUI(QMainWindow):
         splitter.addWidget(scrollarea)
         splitter.setSizes([200,500])
         self.setCentralWidget(splitter)
-        self.setWindowTitle(application)
+        self.setWindowTitle(App.getTitle('Client'))
         self.resize(800,600)
         self.showMaximized()
         logging.debug('Loaded GUI components')
@@ -227,10 +227,10 @@ class ClientUI(QMainWindow):
     # \param Value The clicked item
     def treeviewClick(self,Value):
         title=Value.data()
-        self.table_di.setVisible(title==Utils.getDatablockName('di'))
-        self.table_co.setVisible(title==Utils.getDatablockName('co'))
-        self.table_hr.setVisible(title==Utils.getDatablockName('hr'))
-        self.table_ir.setVisible(title==Utils.getDatablockName('ir'))
+        self.table_di.setVisible(title==Utilities.getDatablockName('di'))
+        self.table_co.setVisible(title==Utilities.getDatablockName('co'))
+        self.table_hr.setVisible(title==Utilities.getDatablockName('hr'))
+        self.table_ir.setVisible(title==Utilities.getDatablockName('ir'))
         self.logging.setVisible(title=='Logging')
         self.conframe.setVisible(title=='Console')
 
@@ -280,7 +280,7 @@ class ClientUI(QMainWindow):
         #saveprofile=lambda x: self.SaveTextToFile('Device Configuration','devcfg',x)
         action_saveprofile=QAction('Save profile',self)
         action_saveprofile.setStatusTip('Save current profile to file')
-        action_saveprofile.triggered.connect(lambda: Utils.saveProfile(self.client.profile,self.getFilename('Profile','json')))
+        action_saveprofile.triggered.connect(lambda: Utilities.saveProfile(self.client.profile,self.getFilename('Profile','json')))
         action_exit=QAction('Exit',self)
         action_exit.triggered.connect(lambda: self.close())
         action_setinterval_1s=QAction('1 second',self,checkable=True,checked=False)
@@ -307,8 +307,8 @@ class ClientUI(QMainWindow):
         action_setinterval.addAction(action_setinterval_30s)
         action_setinterval.addAction(action_setinterval_1m)
         action_setinterval.addAction(action_setinterval_none)
-        action_about=QAction('About '+application,self)
-        action_about.triggered.connect(lambda: QMessageBox.about(self,'About','\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\n'+aboutstring+'\n\n\n'))
+        action_about=QAction('About '+App.getTitle('Client'),self)
+        action_about.triggered.connect(lambda: QMessageBox.about(self,'About','\t\t\t\t\t\t\t\t\t'+aboutstring+'\n\n'))
 
         # Creating menus
         menubar = QMenuBar(self)
@@ -344,14 +344,9 @@ class ClientUI(QMainWindow):
         return filename
 
 
-# Simple identification
-application=Utils.getAppName()+' Client '+Utils.getAppVersion()
-aboutstring=application+'\n'
-aboutstring+='GUI client for MODBUS Testing\n'
-aboutstring+='Vegard Fiksdal(C)2024'
-
 # Load application window and start application
-args=Utils.parseArguments(aboutstring,-1)
+aboutstring=App.getAbout('client','GUI client for MODBUS Testing\n')
+args=App.parseArguments(aboutstring,-1)
 app=QApplication(sys.argv)
 window=ClientUI(args)
 app.exec()

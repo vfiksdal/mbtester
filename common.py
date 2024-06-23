@@ -8,18 +8,28 @@ from pymodbus.payload import BinaryPayloadDecoder
 from pymodbus.datastore import ModbusSparseDataBlock
 import json,logging,sys,os,argparse,struct
 
-##\class Utils
-# \brief Utilities for loading profiles, handling register values etc
-class Utils():
+##\class App
+# \brief Argument parsing and version handling
+class App():
     ##\brief Get application name
     # \return MBTester
-    def getAppName():
+    def getName():
         return 'MBTester'
 
     ##\brief Get application version
     # \return Current version as a string
-    def getAppVersion():
-        return '0.3.1'
+    def getVersion():
+        return '0.3.2'
+
+    ##\brief Get application title
+    # \return Application title as a string
+    def getTitle(role):
+        return App.getName()+' '+role.capitalize()+' '+App.getVersion()
+
+    ##\brief Get application description
+    # \return Application description as a string
+    def getAbout(role,desc):
+        return App.getTitle(role)+'\n'+desc+'\n'+'Vegard Fiksdal(C)2024'
 
     ##\brief Parse commandline arguments
     # \param about String to describe program
@@ -45,29 +55,95 @@ class Utils():
         parser.add_argument('-l','--log',choices=['critical', 'error', 'warning', 'info', 'debug'],help='Log level, default is info',dest='log',default='info',type=str)
         return parser.parse_args()
 
-    ##\brief Get path of application
-    # \return Application path as a string
-    def getPath():
-        return str(os.path.dirname(os.path.abspath(sys.argv[0]))+os.path.sep)
+    ##\brief Reports configuration
+    # \param args Commandline arguments to report
+    # \return Configuration report as a string
+    def reportConfig(args):
+        s=''
+        s+='%-*s: %s\n' % (30,'MODBUS profile',Profiles.getProfile(args,args.profile))
+        s+='%-*s: %s\n' % (30,'MODBUS interface',args.comm.upper())
+        s+='%-*s: %s\n' % (30,'MODBUS framer',args.framer.upper())
+        s+='%-*s: %s\n' % (30,'MODBUS slave ID',str(args.slaveid))
+        #s+='%-*s: %s\n' % (30,'MODBUS offset',str(args.offset))
+        if args.comm=='serial':
+            s+='%-*s: %s\n' % (30,'Serial port',args.serial)
+            s+='%-*s: %s\n' % (30,'Baudrate',args.baudrate)
+            s+='%-*s: %s\n' % (30,'Parity',Utilities.getParityName(args.parity))
+        else:
+            s+='%-*s: %s\n' % (30,'Network host',args.host)
+            s+='%-*s: %s\n' % (30,'Network port',args.port)
+        return s
 
-    ##\brief List profiles in application path
+##\class Profiles
+# \brief Utilities for loading profiles
+class Profiles():
+    ##\brief Get search paths for profiles
+    # \param args Argument list to get user specified paths
+    # \return List of paths eligable to hold profiles
+    def getProfilePaths(args):
+        # Add path
+        path=[]
+        for dir in os.get_exec_path():
+            try:
+                for file in os.listdir(dir):
+                    if file.upper()=='MBTSERVER.PY' or file.upper()=='QMBTSERVER.PY':
+                        if not dir in path: path.append(dir)
+                    if file.upper()=='MBTSERVER.EXE' or file.upper()=='QMBTSERVER.EXE':
+                        if not dir in path: path.append(dir)
+            except:
+                pass
+
+        # Add user specified and cwd paths
+        if args and os.path.dirname(args.profile):
+            path.append(os.path.dirname(os.path.abspath(args.profile)))
+        path.append(os.path.dirname(os.path.abspath(sys.argv[0])))
+
+        # Assert separators
+        for i in range(len(path)):
+            if path[i][-1]!=os.path.sep:
+                path[i]+=os.path.sep
+        return path
+
+    ##\brief List available profiles
+    # \param args Argument list to get user specified paths
     # \return List .json files in the application path
-    def listProfiles():
+    def listProfiles(args):
         files=[]
-        path=Utils.getPath()
-        allfiles=os.listdir(path)
-        for file in allfiles:
-            if file.upper().endswith('.JSON'):
-                files.append(path+file)
+        paths=Profiles.getProfilePaths(args)
+        for dir in paths:
+            for file in os.listdir(dir):
+                if file.upper().endswith('.JSON'):
+                    # Remove duplicates, prioritizing local items
+                    for i in range(len(files)):
+                        if file==files[i][1]:
+                            files.remove(files[i])
+                            break
+
+                    # Add item
+                    files.append([dir,file])
         return files
 
+    ##\brief Get a named profile
+    # \param args Argument list to get user specified paths
+    # \return Path to profile or None on failure
+    def getProfile(args,profile):
+        if os.path.exists(profile):
+            return profile
+        files=Profiles.listProfiles(args)
+        for file in files:
+            if file[1].upper()==profile.upper():
+                return file[0]+file[1]
+        return None
+
     ##\brief Load profile from file
+    # \param args Argument list to get user specified paths
     # \param filename Filename of profile
     # \return Loaded profile
-    def loadProfile(filename):
+    def loadProfile(args,filename):
         # Read and parse json input
-        if os.path.isfile(filename):
-            fd=open(filename,'r')
+        fn=Profiles.getProfile(args,filename)
+        if fn:
+            fd=open(fn,'r')
             profile=json.loads(fd.read())
             fd.close()
         else:
@@ -99,7 +175,7 @@ class Utils():
                 if not 'wo' in register: register['wo']='<'
 
                 # Assert value formatting
-                register['value']=Utils.castRegister(register,register['value'])
+                register['value']=Registers.castRegister(register,register['value'])
 
         return profile
 
@@ -112,25 +188,9 @@ class Utils():
             fd.write(json.dumps(profile,indent=4))
             fd.close()
 
-    ##\brief Reports configuration
-    # \param args Commandline arguments to report
-    # \return Configuration report as a string
-    def reportConfig(args):
-        s=''
-        s+='%-*s: %s\n' % (30,'Communication interface',args.comm.upper())
-        s+='%-*s: %s\n' % (30,'MODBUS framer',args.framer.upper())
-        s+='%-*s: %s\n' % (30,'MODBUS profile',os.path.basename(args.profile))
-        s+='%-*s: %s\n' % (30,'MODBUS slave ID',str(args.slaveid))
-        #s+='%-*s: %s\n' % (30,'MODBUS offset',str(args.offset))
-        if args.comm=='serial':
-            s+='%-*s: %s\n' % (30,'Serial port',args.serial)
-            s+='%-*s: %s\n' % (30,'Baudrate',args.baudrate)
-            s+='%-*s: %s\n' % (30,'Parity',Utils.getParityName(args.parity))
-        else:
-            s+='%-*s: %s\n' % (30,'Network host',args.host)
-            s+='%-*s: %s\n' % (30,'Network port',args.port)
-        return s
-
+##\class Utilities
+# \brief General utilities
+class Utilities():
     ##\brief Get name of parity setting (Eg. E=Even)
     # \param argument Parity commandline argument
     # \return Name of parity setting
@@ -139,7 +199,7 @@ class Utils():
         if argument=='E': return 'Even'
         if argument=='O': return 'Odd'
         return 'Error'
-    
+
     ##\brief Get name of data blocks
     # \param argument Block abbrevation (di,co,hr,ir)
     # \return Name of data block
@@ -154,6 +214,9 @@ class Utils():
     def setMargins(layout):
         layout.setContentsMargins(0,0,0,0)
 
+##\class Registers
+# \brief Utilities for Handling register values etc
+class Registers():
     ##\brief Counts number of registers for datatype
     # \param register The register block to evaluate
     # \return Number of registers for value
@@ -276,7 +339,7 @@ class DataBlock(ModbusSparseDataBlock):
         for key in profile['datablocks'][datablock]:
             register=profile['datablocks'][datablock][key]
             logging.debug('Setting register['+key+']='+str(register['value']))
-            registers[int(key)]=Utils.encodeRegister(register,register['value'])
+            registers[int(key)]=Registers.encodeRegister(register,register['value'])
         super().__init__(registers)
 
     ##\brief Add callback for register write

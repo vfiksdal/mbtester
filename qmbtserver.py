@@ -31,7 +31,7 @@ class ServerTableFrame(QFrame):
         layout=QVBoxLayout()
         layout.addWidget(self.tablewidget,1)
         self.setLayout(layout)
-        Utils.setMargins(layout)
+        Utilities.setMargins(layout)
 
         self.datablock=datablock
         self.server=server
@@ -92,7 +92,7 @@ class ServerTableFrame(QFrame):
             for j in range(len(self.table)):
                 if self.table[j][3]==str(address):
                     register=self.server.profile['datablocks'][self.datablock][str(address)]
-                    value=Utils.decodeRegister(register,value)
+                    value=Registers.decodeRegister(register,value)
                     self.tablewidget.setItem(j,4,QTableWidgetItem(str(value)))
                     register['value']=value
 
@@ -104,7 +104,7 @@ class ServerTableFrame(QFrame):
         register=self.server.profile['datablocks'][self.datablock][address]
         dialog=SetValue('Change register',register)
         if dialog.exec_()!=0:
-            value=Utils.encodeRegister(register,dialog.value)
+            value=Registers.encodeRegister(register,dialog.value)
             getattr(self.server,self.datablock).setValues(int(address),value)
 
 ##\class ServerUI
@@ -132,7 +132,7 @@ class ServerUI(QMainWindow):
         for line in aboutstring.split('\n'):
             self.conframe.addText(line)
         self.conframe.addText('')
-        for line in Utils.reportConfig(args).split('\n'):
+        for line in App.reportConfig(args).split('\n'):
             self.conframe.addText(line)
 
         # Add statusbar
@@ -159,10 +159,10 @@ class ServerUI(QMainWindow):
         treemodel=QStandardItemModel()
         rootnode=treemodel.invisibleRootItem()
         logitem=StandardItem('Console')
-        rootnode.appendRow(StandardItem(Utils.getDatablockName('di')))
-        rootnode.appendRow(StandardItem(Utils.getDatablockName('co')))
-        rootnode.appendRow(StandardItem(Utils.getDatablockName('hr')))
-        rootnode.appendRow(StandardItem(Utils.getDatablockName('ir')))
+        rootnode.appendRow(StandardItem(Utilities.getDatablockName('di')))
+        rootnode.appendRow(StandardItem(Utilities.getDatablockName('co')))
+        rootnode.appendRow(StandardItem(Utilities.getDatablockName('hr')))
+        rootnode.appendRow(StandardItem(Utilities.getDatablockName('ir')))
         rootnode.appendRow(logitem)
 
         # Wrap up treeview
@@ -224,10 +224,10 @@ class ServerUI(QMainWindow):
     # \param Value The clicked item
     def treeviewClick(self,Value):
         title=Value.data()
-        self.table_di.setVisible(title==Utils.getDatablockName('di'))
-        self.table_co.setVisible(title==Utils.getDatablockName('co'))
-        self.table_hr.setVisible(title==Utils.getDatablockName('hr'))
-        self.table_ir.setVisible(title==Utils.getDatablockName('ir'))
+        self.table_di.setVisible(title==Utilities.getDatablockName('di'))
+        self.table_co.setVisible(title==Utilities.getDatablockName('co'))
+        self.table_hr.setVisible(title==Utilities.getDatablockName('hr'))
+        self.table_ir.setVisible(title==Utilities.getDatablockName('ir'))
         self.conframe.setVisible(title=='Console')
 
     ##\brief Timer event to update status and tranceivers
@@ -255,11 +255,11 @@ class ServerUI(QMainWindow):
         # Create menu actions
         action_saveprofile=QAction('Save profile',self)
         action_saveprofile.setStatusTip('Save current profile to file')
-        action_saveprofile.triggered.connect(lambda: Utils.saveProfile(self.server.profile,self.getFilename('Profile','json')))
+        action_saveprofile.triggered.connect(lambda: Profiles.saveProfile(self.server.profile,self.getFilename('Profile','json')))
         action_exit=QAction('Exit',self)
         action_exit.triggered.connect(lambda: self.close())
         action_about=QAction('About '+application,self)
-        action_about.triggered.connect(lambda: QMessageBox.about(self,'About','\t\t\t\t\t\t\t\t\t\n'+aboutstring+'\n\n'))
+        action_about.triggered.connect(lambda: QMessageBox.about(self,'About','\t\t\t\t\t\t\t\t\t'+aboutstring+'\n\n'))
 
         # Creating menus
         menubar = QMenuBar(self)
@@ -287,13 +287,13 @@ class ServerUI(QMainWindow):
 
 
 # Simple identification
-application=Utils.getAppName()+' Server '+Utils.getAppVersion()
+application=App.getName()+' Server '+App.getVersion()
 aboutstring=application+'\n'
 aboutstring+='GUI server for MODBUS Testing\n'
 aboutstring+='Vegard Fiksdal(C)2024'
 
 # Load application window and start application
-args=Utils.parseArguments(aboutstring)
+args=App.parseArguments(aboutstring)
 app=QApplication(sys.argv)
 window=ServerUI(args)
 app.exec()
