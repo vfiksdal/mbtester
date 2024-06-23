@@ -1,5 +1,5 @@
 ##\package mbtclient
-# \brief MBTester Client
+# \brief MBTester Client using Qt
 #
 # Vegard Fiksdal (C) 2024
 #

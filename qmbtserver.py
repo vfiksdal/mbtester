@@ -1,5 +1,5 @@
 ##\package mbtserver
-# \brief MBTester Server
+# \brief MBTester Server using Qt
 #
 # Vegard Fiksdal (C) 2024
 #
