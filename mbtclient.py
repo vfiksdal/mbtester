@@ -1,357 +1,405 @@
-##\package mbtclient
-# \brief MBTester Client
+##\package mbclient
+# \brief CLI MODBUS client
 #
 # Vegard Fiksdal (C) 2024
 #
+from pymodbus import pymodbus_apply_logging_config
+import pymodbus.client as ModbusClient
+from pymodbus import (
+    ExceptionResponse,
+    ModbusException,
+)
+import logging,sys,threading,time
+from common import *
 
-# Import system modules
-import logging.handlers
-import sys,logging
+##\class AsyncClientObject
+# \brief Asyncronous client object
+class AsyncClientObject():
+    ##\brief Initializes object
+    # \param Parsed commandline arguments
+    async def __init__(self,args):
+        # Parse profiles
+        self.profile=Utils.loadProfile(args.profile)
+        self.slaveid=args.slaveid
+        self.offset=args.offset
 
-# Import QT modules
-from PyQt5.QtWidgets import QApplication, QMainWindow, QProgressBar, QSplitter, QTreeView, QStatusBar, QScrollArea, QMenuBar, QMenu, QAction, QActionGroup
-from PyQt5.Qt import QStandardItemModel
-from PyQt5.QtCore import Qt, QTimer
-
-# Import local modules
-from components import *
-from mbclient import *
-
-##\class ClientTableFrame
-# \brief Table to hold and interact with a modbus register block
-class ClientTableFrame(QFrame):
-    ##\brief Constructor sets up frame layout
-    # \param worker ClientWorker object to send/receive values
-    # \param datablock Name of datablock (di, co, hr or ir)
-    def __init__(self,worker,datablock):
-        super().__init__()
-        self.tablewidget=QTableWidget()
-        self.tablewidget.verticalHeader().setVisible(False)
-        self.tablewidget.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        self.tablewidget.setSelectionBehavior(QAbstractItemView.SelectRows)
-        self.tablewidget.setEditTriggers(QAbstractItemView.NoEditTriggers)
-        self.tablewidget.cellDoubleClicked.connect(self.doubleClicked)
-        layout=QVBoxLayout()
-        layout.addWidget(self.tablewidget,1)
-        self.setLayout(layout)
-        Utils.setMargins(layout)
-        self.datablock=datablock
-        self.worker=worker
-
-        # Populate table
-        registers=worker.client.profile['datablocks'][datablock]
-        self.table=[]
-        for register in registers:
-            row=[]
-            row.append(registers[register]['dsc'])
-            row.append(registers[register]['dtype'])
-            row.append(registers[register]['rtype'].upper())
-            row.append(register)
-            row.append('')
-            self.table.append(row)
-        self.tablewidget.setColumnCount(5)
-        self.tablewidget.setRowCount(len(self.table))
-        self.tablewidget.setHorizontalHeaderItem(0,QTableWidgetItem('Description'))
-        self.tablewidget.setHorizontalHeaderItem(1,QTableWidgetItem('Type'))
-        self.tablewidget.setHorizontalHeaderItem(2,QTableWidgetItem('Access'))
-        self.tablewidget.setHorizontalHeaderItem(3,QTableWidgetItem('Address'))
-        self.tablewidget.setHorizontalHeaderItem(4,QTableWidgetItem('Value'))
-        for i in range(len(self.table)):
-            for j in range(len(self.table[i])):
-                self.tablewidget.setItem(i,j,QTableWidgetItem(str(self.table[i][j])))
-
-    ##\brief Update read/write value
-    # \param datablock Datablock to update
-    # \param address Register address that has changed
-    # \param value New register value
-    def update(self,datablock,address,value):
-        for j in range(len(self.table)):
-            if self.table[j][3]==str(address):
-                self.tablewidget.setItem(j,4,QTableWidgetItem(str(value)))
-                break
-
-    ##\brief Event handler for double-clicks. Opens a dialog to write a register value
-    # \param row The clicked row
-    # \param column The clicked column (Not used)
-    def doubleClicked(self,row,column):
-        address=self.table[row][3]
-        register=self.worker.client.profile['datablocks'][self.datablock][address]
-        if register['rtype'].upper()=='R':
-            resp=QMessageBox.question(self,'Confirmation','This value is marked read-only.\n\nDo you want to try overwriting it anyway?')
-            if resp==QMessageBox.StandardButton.No: return
-
-        dialog=SetValue(register)
-        if dialog.exec_()!=0:
-            register['value']=dialog.value
-            self.worker.write(self.datablock,address,dialog.value)
-
-##\class ClientUI
-# \brief Main Application class
-class ClientUI(QMainWindow):
-    ##\brief Loads components and sets layout
-    # \param args Parsed commandline arguments
-    # \param parent Parent object
-    def __init__(self,args,parent=None):
-        super(ClientUI,self).__init__(parent)
-
-        # Try to connect with dialog
+        # Load client object
+        self.args=args
         self.client=None
-        self.conframe=ConFrame(args)
-        self.conframe.showMessagebox(True)
-        while(True):
-            if Connect(args).exec_()!=0:
-                self.client=ClientObject(args)
-                if self.client.connect(): break
-            else:
-                logging.error('User aborted')
-                sys.exit()
-        self.worker=ClientWorker(self.client)
-        self.worker.addReadCallback(self.update)
-        self.worker.addWriteCallback(self.update)
-        self.conframe.showMessagebox(False)
-        self.conframe.clear()
-        for line in aboutstring.split('\n'):
-            self.conframe.addText(line)
-        self.conframe.addText('')
-        for line in Utils.reportConfig(args).split('\n'):
-            self.conframe.addText(line)
+        if args.comm=='tcp':    self.client = ModbusClient.AsyncModbusTcpClient(args.host,args.port,args.framer,timeout=args.timeout,retries=3)
+        if args.comm=='udp':    self.client = ModbusClient.AsyncModbusUdpClient(args.host,args.port,args.framer,timeout=args.timeout,retries=3)
+        if args.comm=='serial': self.client = ModbusClient.AsyncModbusSerialClient(args.serial,args.framer,args.baudrate,args.bytesize,args.parity,timeout=args.timeout,strict=True,stopbits=1,retries=3,handle_local_echo=False)
 
-        # Prepare update mechanism
-        self.lock=threading.Lock()
-        self.updates=[]
+    ##\brief Connect to the server
+    # \return True if succsessfully connected
+    async def connect(self):
+        if self.client:
+            await client.connect()
+            if not client.connected: client=None
+        return (self.client!=None)
 
-        # Add statusbar
-        self.statusbar=QStatusBar()
-        self.status_int_progress=QProgressBar()
-        self.status_read_progress=QProgressBar()
-        self.status_rcount=QLineEdit()
-        self.status_wcount=QLineEdit()
-        self.status_queue=QLineEdit()
-        self.status_duration=QLineEdit()
-        self.status_int_progress.setEnabled(False)
-        self.status_read_progress.setEnabled(False)
-        self.status_rcount.setEnabled(False)
-        self.status_wcount.setEnabled(False)
-        self.status_queue.setEnabled(False)
-        self.status_duration.setEnabled(False)
-        self.statusbar.addWidget(self.status_rcount)
-        self.statusbar.addWidget(self.status_wcount)
-        self.statusbar.addWidget(self.status_queue)
-        self.statusbar.addWidget(self.status_duration)
-        self.statusbar.addWidget(self.status_int_progress,1)
-        self.statusbar.addWidget(self.status_read_progress,1)
-        self.setStatusBar(self.statusbar)
-        self.status_int_progress.setAlignment(Qt.AlignCenter)
-        self.status_int_progress.setTextVisible(True)
-        self.status_read_progress.setAlignment(Qt.AlignCenter)
-        self.status_read_progress.setTextVisible(True)
-        self.statusbar.setVisible(True)
-        
-        # Build treeview
-        self.treeview=QTreeView()
-        self.treeview.setHeaderHidden(True)
-        treemodel=QStandardItemModel()
-        rootnode=treemodel.invisibleRootItem()
-        conitem=StandardItem('Console')
-        rootnode.appendRow(StandardItem(Utils.getDatablockName('di')))
-        rootnode.appendRow(StandardItem(Utils.getDatablockName('co')))
-        rootnode.appendRow(StandardItem(Utils.getDatablockName('hr')))
-        rootnode.appendRow(StandardItem(Utils.getDatablockName('ir')))
-        rootnode.appendRow(StandardItem('Logging'))
-        rootnode.appendRow(conitem)
+    ##\brief Read registers from the server
+    # \param datablock Datablock to read from (di,co,hr or ir)
+    # \param address Register address to read from
+    # \return Decoded value, or None upon failure
+    async def read(self,datablock,address):
+        response=None
+        try:
+            # Parse register information
+            registerdata=self.profile['datablocks'][datablock][address]
+            registeraddress=int(address)+self.offset
+            count=Utils.registersPerValue(registerdata)
 
-        # Wrap up treeview
-        self.treeview.setModel(treemodel)
-        self.treeview.expandAll()
-        self.treeview.clicked.connect(self.treeviewClick)
-        index=treemodel.indexFromItem(conitem)
-        self.treeview.setCurrentIndex(index)
+            # Execute request
+            if datablock=='di': response = await self.client.read_discrete_inputs(registeraddress,count,self.slaveid)
+            if datablock=='co': response = await self.client.read_coils(registeraddress,count,self.slaveid)
+            if datablock=='hr': response = await self.client.read_holding_registers(registeraddress,count,self.slaveid)
+            if datablock=='ir': response = await self.client.read_input_registers(registeraddress,count,self.slaveid)
+        except ModbusException as exc:
+            logging.error('ModbusException: '+str(exc))
+            return None
+        if response.isError() or isinstance(response, ExceptionResponse):
+            logging.warning(str(response))
+            return None
+        if datablock=='di' or datablock=='co': return response.bits[0]
+        if datablock=='hr' or datablock=='ir': return Utils.decodeRegister(registerdata,response.registers)
+        return None
 
-        # Load frames for registers
-        self.table_di=ClientTableFrame(self.worker,'di')
-        self.table_co=ClientTableFrame(self.worker,'co')
-        self.table_hr=ClientTableFrame(self.worker,'hr')
-        self.table_ir=ClientTableFrame(self.worker,'ir')
-        self.table_di.setVisible(False)
-        self.table_co.setVisible(False)
-        self.table_hr.setVisible(False)
-        self.table_ir.setVisible(False)
-        self.worker.start()
+    ##\brief Write registers to the server
+    # \param datablock Datablock to write to (di,co,hr or ir)
+    # \param address Register address to write to
+    # \return True upon success
+    async def write(self,datablock,address,value):
+        response=None
+        try:
+            # Parse register information
+            registerdata=self.profile['datablocks'][datablock][address]
+            registeraddress=int(address)+self.offset
+            values=Utils.encodeRegister(registerdata,value)
 
-        # Load frame for logging
-        self.logging=CSVLogger(self.client.profile)
-        self.logging.setVisible(False)
-        self.worker.addCompletedCallback(self.logging.logItems)
+            # Execute request
+            if datablock=='co': response = await self.client.write_coil(registeraddress,value,self.slaveid)
+            if datablock=='hr': response = await self.client.write_registers(registeraddress,values,self.slaveid)
+        except ModbusException as exc:
+            logging.error('ModbusException: '+str(exc))
+            return False
+        if response==None:
+            logging.warn('Can not write to input registers!')
+            return False
+        if response.isError() or isinstance(response, ExceptionResponse):
+            logging.warning(str(response))
+            return False
+        return True
 
-        # Create menubar
-        self.createMenubar()
+    ##\brief Read all registers from the server
+    # \return dictionary of all read values
+    async def download(self):
+        output={}
+        output['identity']=self.profile['identity']
+        output['datablocks']={}
+        for datablock in self.profile['datablocks']:
+            for address in self.profile['datablocks'][datablock]:
+                value=await self.read(datablock,address)
+                if value!=None:
+                    if not datablock in output['datablocks']: output['datablocks'][datablock]={}
+                    output['datablocks'][datablock][address]={}
+                    output['datablocks'][datablock][address]['name']=self.profile['datablocks'][datablock][address]['dsc']
+                    output['datablocks'][datablock][address]['value']=value
+        return output
 
-        # Use a timer to process data from the queue
-        self.timer=QTimer()
-        self.timer.timeout.connect(self.process)
-        self.timer.start(250)
-
-        # Show window
-        layout=QVBoxLayout()
-        widget=QFrame()
-        scrollarea=QScrollArea()
-        layout.addWidget(self.conframe)
-        layout.addWidget(self.table_di)
-        layout.addWidget(self.table_co)
-        layout.addWidget(self.table_hr)
-        layout.addWidget(self.table_ir)
-        layout.addWidget(self.logging)
-        widget.setLayout(layout)
-        scrollarea.setWidgetResizable(True)
-        scrollarea.setWidget(widget)
-        splitter=QSplitter(Qt.Horizontal)
-        splitter.addWidget(self.treeview)
-        splitter.addWidget(scrollarea)
-        splitter.setSizes([200,500])
-        self.setCentralWidget(splitter)
-        self.setWindowTitle(application)
-        self.resize(800,600)
-        self.showMaximized()
-        logging.debug('Loaded GUI components')
-
-    ##\brief Stop background processes upon terminating the application
-    # \param event Not used
-    def closeEvent(self, event):
-        self.timer.stop()
-        logging.info('Shutting down connection')
-        if self.worker: self.worker.close()
+    ##\brief Close connection to server
+    def close(self):
         if self.client: self.client.close()
-        super().close()
 
-    ##\brief Respond to user clicking on the treeview
-    # \param Value The clicked item
-    def treeviewClick(self,Value):
-        title=Value.data()
-        self.table_di.setVisible(title==Utils.getDatablockName('di'))
-        self.table_co.setVisible(title==Utils.getDatablockName('co'))
-        self.table_hr.setVisible(title==Utils.getDatablockName('hr'))
-        self.table_ir.setVisible(title==Utils.getDatablockName('ir'))
-        self.logging.setVisible(title=='Logging')
-        self.conframe.setVisible(title=='Console')
+##\class ClientObject
+# \brief Syncronous client object
+class ClientObject():
+    ##\brief Initializes object
+    # \param Parsed commandline arguments
+    def __init__(self,args):
+        # Parse profiles
+        self.profile=Utils.loadProfile(args.profile)
+        self.slaveid=args.slaveid
+        self.offset=args.offset
 
-    ##\brief Callback to register updated values from client
-    # \param datablock Type of data to update
-    # \param address Regisster address
-    # \param value New value
-    #
-    # UI is only updated from Process() as that runs in UI thread
-    def update(self,datablock,address,value):
+        # Load client object
+        self.args=args
+        self.client=None
+        if args.comm=='tcp':    self.client = ModbusClient.ModbusTcpClient(args.host,args.port,args.framer,timeout=args.timeout,retries=3)
+        if args.comm=='udp':    self.client = ModbusClient.ModbusUdpClient(args.host,args.port,args.framer,timeout=args.timeout,retries=3)
+        if args.comm=='serial': self.client = ModbusClient.ModbusSerialClient(args.serial,args.framer,args.baudrate,args.bytesize,args.parity,timeout=args.timeout,strict=True,stopbits=1,retries=3,handle_local_echo=False)
+
+    ##\brief Connect to the server
+    # \return True if succsessfully connected
+    def connect(self):
+        if self.client:
+            self.client.connect()
+            if not self.client.connected: self.client=None
+        return (self.client!=None)
+
+    ##\brief Read registers from the server
+    # \param datablock Datablock to read from (di,co,hr or ir)
+    # \param address Register address to read from
+    # \return Decoded value, or None upon failure
+    def read(self,datablock,address):
+        response=None
+        try:
+            # Parse register information
+            registerdata=self.profile['datablocks'][datablock][address]
+            registeraddress=int(address)+self.offset
+            count=Utils.registersPerValue(registerdata)
+
+            # Execute request
+            if datablock=='di': response = self.client.read_discrete_inputs(registeraddress,count,self.slaveid)
+            if datablock=='co': response = self.client.read_coils(registeraddress,count,self.slaveid)
+            if datablock=='hr': response = self.client.read_holding_registers(registeraddress,count,self.slaveid)
+            if datablock=='ir': response = self.client.read_input_registers(registeraddress,count,self.slaveid)
+        except ModbusException as exc:
+            logging.error('ModbusException: '+str(exc))
+            return None
+        if response.isError() or isinstance(response, ExceptionResponse):
+            logging.warning(str(response))
+            return None
+        if datablock=='di' or datablock=='co': return response.bits[0]
+        if datablock=='hr' or datablock=='ir': return Utils.decodeRegister(registerdata,response.registers)
+        return None
+
+    ##\brief Write registers to the server
+    # \param datablock Datablock to write to (di,co,hr or ir)
+    # \param address Register address to write to
+    # \return True upon success
+    def write(self,datablock,address,value):
+        response=None
+        try:
+            # Parse register information
+            registerdata=self.profile['datablocks'][datablock][address]
+            registeraddress=int(address)+self.offset
+            values=Utils.encodeRegister(registerdata,value)
+
+            # Execute request
+            if datablock=='co': response = self.client.write_coil(registeraddress,value,self.slaveid)
+            if datablock=='hr': response = self.client.write_registers(registeraddress,values,self.slaveid)
+        except ModbusException as exc:
+            logging.error('ModbusException: '+str(exc))
+            return False
+        if response==None:
+            logging.warn('Can not write to input registers!')
+            return False
+        if response.isError() or isinstance(response, ExceptionResponse):
+            logging.warning(str(response))
+            return False
+        return True
+
+    ##\brief Read all registers from the server
+    # \return dictionary of all read values
+    def download(self):
+        output={}
+        output['identity']=self.profile['identity']
+        output['datablocks']={}
+        for datablock in self.profile['datablocks']:
+            for address in self.profile['datablocks'][datablock]:
+                value=self.read(datablock,address)
+                if value!=None:
+                    if not datablock in output['datablocks']: output['datablocks'][datablock]={}
+                    output['datablocks'][datablock][address]={}
+                    output['datablocks'][datablock][address]['name']=self.profile['datablocks'][datablock][address]['dsc']
+                    output['datablocks'][datablock][address]['value']=value
+        return output
+
+    ##\brief Close connection to server
+    def close(self):
+        if self.client: self.client.close()
+
+
+##\class ClientWorker
+# \brief Manages sending and receiving messages with the client object
+class ClientWorker():
+    ##\brief Initialize object
+    # \param client Modbus client object to use (Fully connected)
+    def __init__(self,client):
+        # Parse registerlist
+        self.client=client
+        self.rcallbacks=[]
+        self.wcallbacks=[]
+        self.ccallbacks=[]
+        self.reglist=[]
+        self.backlog=[]
+        self.started=None
+        self.duration=0
+        self.rcount=0
+        self.wcount=0
+        self.lock=threading.Lock()
+        for datablock in self.client.profile['datablocks']:
+            for address in self.client.profile['datablocks'][datablock]:
+                self.reglist.append([datablock,address,None])
+
+    ##\brief Add callback for register write
+    # \param callback Callback function(datablock,register,value)
+    def addWriteCallback(self,callback):
+        self.wcallbacks.append(callback)
+
+    ##\brief Add callback for register write
+    # \param callback Callback function(datablock,register,value)
+    def addReadCallback(self,callback):
+        self.rcallbacks.append(callback)
+
+    ##\brief Add callback for completed cycle
+    # \param callback Callback function()
+    def addCompletedCallback(self,callback):
+        self.ccallbacks.append(callback)
+
+    ##\brief Get status data
+    # \return itemcount,readcount,writecount,duration,interval progress,read progress
+    def getStatus(self):
         with self.lock:
-            self.updates.append([datablock,address,value])
+            if self.next and self.interval:
+                iprg=int((1-((self.next-time.time())/self.interval))*100)
+            else:
+                iprg=0
+            if len(self.backlog):
+                rprg=int((1-(len(self.backlog)/len(self.reglist)))*100)
+            else:
+                rprg=0
+            return len(self.backlog),self.rcount,self.wcount,self.duration,iprg,rprg
 
-    ##\brief Timer event to update status and tranceivers in UI thread
-    def process(self):
-        # Update UI
+    ##\brief Change polling interval
+    # \param Interval Polling interval in seconds
+    def setInterval(self,Interval):
         with self.lock:
-            for update in self.updates:
-                if update[0]=='di': self.table_di.update(update[0],update[1],update[2])
-                if update[0]=='co': self.table_co.update(update[0],update[1],update[2])
-                if update[0]=='hr': self.table_hr.update(update[0],update[1],update[2])
-                if update[0]=='ir': self.table_ir.update(update[0],update[1],update[2])
-                self.logging.update(update[0],update[1],update[2])
+            if self.interval!=Interval:
+                self.interval=Interval
+                if Interval:
+                    logging.info('Changing polling interval to '+str(Interval)+'s')
+                    self.next=time.time()
+                else:
+                    logging.info('Disabling polling interval')
+                    self.next=None
 
-        # Update status bar
-        icount,rcount,wcount,duration,iprg,rprg=self.worker.getStatus()
-        self.status_rcount.setText('Reads: %d' % rcount)
-        self.status_wcount.setText('Writes: %d' % wcount)
-        self.status_queue.setText('Queue: %d items' % icount)
-        self.status_duration.setText('Tr: %.3fms' % round(duration*1000,3))
-        if iprg:
-            self.status_int_progress.setValue(iprg)
-            self.status_int_progress.setFormat('Waiting for next read cycle '+str(iprg)+'%')
-        else:
-            self.status_int_progress.setValue(iprg)
-            self.status_int_progress.setFormat('Automatic polling disabled')
-        if rprg:
-            self.status_read_progress.setValue(rprg)
-            self.status_read_progress.setFormat('Executing read cycle '+str(rprg)+'%')
-        else:
-            self.status_read_progress.setValue(rprg)
-            self.status_read_progress.setFormat('Read cycle completed')
+    ##\brief Trigger an immidiate reading cycle
+    def trigger(self):
+        with self.lock:
+            self.next=time.time()
 
-    ##\brief Creates menu bar
-    def createMenubar(self):
-        # Create menu actions
-        #saveprofile=lambda x: self.SaveTextToFile('Device Configuration','devcfg',x)
-        action_saveprofile=QAction('Save profile',self)
-        action_saveprofile.setStatusTip('Save current profile to file')
-        action_saveprofile.triggered.connect(lambda: Utils.saveProfile(self.client.profile,self.getFilename('Profile','json')))
-        action_exit=QAction('Exit',self)
-        action_exit.triggered.connect(lambda: self.close())
-        action_setinterval_1s=QAction('1 second',self,checkable=True,checked=False)
-        action_setinterval_1s.setStatusTip('Set polling interval to 1 second')
-        action_setinterval_1s.triggered.connect(lambda: self.worker.setInterval(1))
-        action_setinterval_15s=QAction('15 seconds',self,checkable=True,checked=False)
-        action_setinterval_15s.setStatusTip('Set polling interval to 15 seconds')
-        action_setinterval_15s.triggered.connect(lambda: self.worker.setInterval(15))
-        action_setinterval_30s=QAction('30 seconds',self,checkable=True,checked=False)
-        action_setinterval_30s.setStatusTip('Set polling interval to 30 seconds')
-        action_setinterval_30s.triggered.connect(lambda: self.worker.setInterval(30))
-        action_setinterval_1m=QAction('1 minute',self,checkable=True,checked=True)
-        action_setinterval_1m.setStatusTip('Set polling interval to 1 minute')
-        action_setinterval_1m.triggered.connect(lambda: self.worker.setInterval(60))
-        action_setinterval_none=QAction('Disable',self,checkable=True,checked=False)
-        action_setinterval_none.setStatusTip('Disable automatic polling')
-        action_setinterval_none.triggered.connect(lambda: self.worker.setInterval(None))
-        action_setinterval_now=QAction('Read now',self)
-        action_setinterval_now.setStatusTip('Trigger immidiate read-cycle')
-        action_setinterval_now.triggered.connect(lambda: self.worker.trigger())
-        action_setinterval=QActionGroup(self)
-        action_setinterval.addAction(action_setinterval_1s)
-        action_setinterval.addAction(action_setinterval_15s)
-        action_setinterval.addAction(action_setinterval_30s)
-        action_setinterval.addAction(action_setinterval_1m)
-        action_setinterval.addAction(action_setinterval_none)
-        action_about=QAction('About '+application,self)
-        action_about.triggered.connect(lambda: QMessageBox.about(self,'About','\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\n'+aboutstring+'\n\n\n'))
+    ##\brief Starts background thread
+    def start(self):
+        # Start poller thread
+        self.running=True
+        self.interval=60
+        self.next=time.time()
+        self.thread=threading.Thread(target=self.worker)
+        self.thread.start()
 
-        # Creating menus
-        menubar = QMenuBar(self)
-        filemenu = QMenu("&File", self)
-        filemenu.addAction(action_saveprofile)
-        filemenu.addSeparator()
-        filemenu.addAction(action_exit)
-        intmenu = QMenu("&Interval", self)
-        intmenu.addAction(action_setinterval_1s)
-        intmenu.addAction(action_setinterval_15s)
-        intmenu.addAction(action_setinterval_30s)
-        intmenu.addAction(action_setinterval_1m)
-        intmenu.addAction(action_setinterval_none)
-        intmenu.addSeparator()
-        intmenu.addAction(action_setinterval_now)
-        helpmenu = QMenu("&Help", self)
-        helpmenu.addAction(action_about)
-        menubar.addMenu(filemenu)
-        menubar.addMenu(intmenu)
-        menubar.addMenu(helpmenu)
-        self.setMenuBar(menubar)
+    ##\brief Background thread to read/write values
+    def worker(self):
+        while self.running:
+            with self.lock:
+                # Get timestamp
+                now=time.time()
 
-    ##\brief Get filename from user input
-    # \param Desc Textual description of output file
-    # \param Ext File extension to save as
-    # \return filename
-    def getFilename(self,Desc,Ext):
-        options = QFileDialog.Options()
-        title='Save '+Desc
-        default=Desc+'.'+Ext
-        filter=Desc+'(*.'+Ext+');;All Files(*.*)'
-        filename, _ = QFileDialog.getSaveFileName(self,title,default,filter,options=options)
-        return filename
+                # Check for completed cycle
+                if len(self.backlog)==0 and self.started:
+                    duration=now-self.started
+                    if self.duration==0: self.duration=duration
+                    self.duration=(self.duration*3+(duration))/4.0
+                    for callback in self.ccallbacks: callback()
+                    logging.info('Cycle completed in %.3fms' % round(self.duration*1000,3))
+                    self.started=None
 
+                # Check for next cycle
+                if self.next and now>=self.next and len(self.backlog)==0:
+                    logging.info('Starting new read cycle')
+                    self.backlog.extend(self.reglist)
+                    self.started=now
+                    if self.interval:
+                        self.next=now+self.interval
+                    else:
+                        self.next=None
 
-# Simple identification
-application=Utils.getAppName()+' Client '+Utils.getAppVersion()
-aboutstring=application+'\n'
-aboutstring+='GUI client for MODBUS Testing\n'
-aboutstring+='Vegard Fiksdal(C)2024'
+                # Iterate current cycle
+                if len(self.backlog):
+                    backlog=self.backlog[0]
+                    self.backlog=self.backlog[1:]
+                    if backlog[2]==None:
+                        self.rcount+=1
+                    else:
+                        self.wcount+=1
+                else:
+                    backlog=None
 
-# Load application window and start application
-args=Utils.parseArguments(aboutstring,-1)
-app=QApplication(sys.argv)
-window=ClientUI(args)
-app.exec()
+            # Execute current cycle
+            if backlog:
+                if backlog[2]==None:
+                    # Read register
+                    value=self.client.read(backlog[0],backlog[1])
+                    if value==None:
+                        logging.warning('Failed to read register '+str(backlog[1]))
+                    else:
+                        self.client.profile['datablocks'][backlog[0]][str(backlog[1])]['value']=value
+                        for callback in self.rcallbacks:
+                            callback(backlog[0],backlog[1],value)
+                else:
+                    # Write register
+                    if self.client.write(backlog[0],backlog[1],backlog[2]):
+                        self.client.profile['datablocks'][backlog[0]][str(backlog[1])]['value']=backlog[2]
+                        for callback in self.wcallbacks:
+                            callback(backlog[0],backlog[1],backlog[2])
+                    else:
+                        logging.warning('Failed to write register '+str(backlog[1]))
+            else:
+                time.sleep(0.1)
+
+    ##\brief Read a register value from server
+    # \param datablock Name of datablock (di, co, hr or ir)
+    # \param address Register address to read
+    def read(self,datablock,address):
+        with self.lock:
+            logging.info('Reading register '+datablock+'['+str(address)+']')
+            self.backlog.append([datablock,address,None])
+
+    ##\brief Write a register value to server
+    # \param datablock Name of datablock (di, co, hr or ir)
+    # \param address Register address to write to
+    # \param value Value to write
+    def write(self,datablock,address,value):
+        with self.lock:
+            logging.info('Writing register '+datablock+'['+str(address)+']='+str(value))
+            self.backlog.append([datablock,address,value])
+
+    ##\brief Stop all running processes
+    def close(self):
+        self.running=False
+        self.thread.join()
+
+if __name__ == "__main__":
+    # Parse command line options
+    aboutstring=Utils.getAppName()+' Client '+Utils.getAppVersion()+'\n'
+    aboutstring+='Client for MODBUS Testing\n'
+    aboutstring+='Vegard Fiksdal(C)2024'
+    args=Utils.parseArguments(aboutstring,-1)
+
+    # Check for profile
+    if len(args.profile)==0:
+        print('Please set a profile to use (See -p or --profile parameter)')
+        sys.exit()
+    elif not os.path.exists(args.profile):
+        print('Profile file '+args.profile+' does not exist')
+        sys.exit()
+
+    # Enable logging
+    logging.basicConfig(level=logging.INFO,stream=sys.stdout,format='%(asctime)s - %(levelname)s - %(message)s')
+    pymodbus_apply_logging_config(args.log.upper())
+    debug = (args.log.upper()=='DEBUG')
+
+    # Download client data
+    client=ClientObject(args)
+    output=client.download()
+    client.close()
+
+    # Present options
+    print(aboutstring+'\n')
+    print(Utils.reportConfig(args))
+
+    # Print result
+    output=json.dumps(output,indent=4)
+    print(str(output))
+

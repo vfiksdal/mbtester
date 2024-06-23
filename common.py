@@ -19,7 +19,7 @@ class Utils():
     ##\brief Get application version
     # \return Current version as a string
     def getAppVersion():
-        return '0.3.0'
+        return '0.3.1'
 
     ##\brief Parse commandline arguments
     # \param about String to describe program

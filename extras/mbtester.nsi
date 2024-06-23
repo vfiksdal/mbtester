@@ -12,6 +12,7 @@ InstallDirRegKey HKLM "${REGPATH_UNINSTSUBKEY}" "UninstallString"
 RequestExecutionLevel admin
 !include x64.nsh
 ShowInstDetails show
+!define MUI_ICON ${__FILEDIR__}\mbtester.ico
 !define MUI_ABORTWARNING
 Var StartMenuFolder
 
@@ -39,7 +40,6 @@ Section "MBTester core" MBTBase
     SectionIn RO
     DetailPrint "Installing MBTester core"
     SetOutPath $INSTDIR
-    WriteUninstaller "$INSTDIR\Uninstall.exe"
     EnVar::Check "PATH" "$INSTDIR"
     Pop $0
     ${If} $0 != 0
@@ -47,6 +47,7 @@ Section "MBTester core" MBTBase
     ${EndIf}
     File "${__FILEDIR__}\README.md"
     File "${__FILEDIR__}\LICENSE"
+    WriteUninstaller "$INSTDIR\Uninstall.exe"
     !insertmacro MUI_STARTMENU_WRITE_BEGIN Application
     CreateDirectory "$SMPROGRAMS\$StartMenuFolder"
     CreateShortcut "$SMPROGRAMS\$StartMenuFolder\Uninstall.lnk" "$INSTDIR\Uninstall.exe"
@@ -55,18 +56,18 @@ SectionEnd
 
 Section "MBTester GUI" MBTGUI
     DetailPrint "Installing MBTester GUI applications"
-    File "${__FILEDIR__}\mbtserver_gui.exe"
-    File "${__FILEDIR__}\mbtclient_gui.exe"
+    File "${__FILEDIR__}\qmbtserver.exe"
+    File "${__FILEDIR__}\qmbtclient.exe"
     !insertmacro MUI_STARTMENU_WRITE_BEGIN Application
-    CreateShortcut "$SMPROGRAMS\$StartMenuFolder\MBTServer.lnk" "$INSTDIR\mbtserver_gui.exe"
-    CreateShortcut "$SMPROGRAMS\$StartMenuFolder\MBTClient.lnk" "$INSTDIR\mbtclient_gui.exe"
+    CreateShortcut "$SMPROGRAMS\$StartMenuFolder\MBTServer.lnk" "$INSTDIR\qmbtserver.exe"
+    CreateShortcut "$SMPROGRAMS\$StartMenuFolder\MBTClient.lnk" "$INSTDIR\qmbtclient.exe"
     !insertmacro MUI_STARTMENU_WRITE_END
 SectionEnd
 
 Section "MBTester CLI" MBTCLI
     DetailPrint "Installing MBTester CLI applications"
-    File "${__FILEDIR__}\mbtserver_cli.exe"
-    File "${__FILEDIR__}\mbtclient_cli.exe"
+    File "${__FILEDIR__}\mbtserver.exe"
+    File "${__FILEDIR__}\mbtclient.exe"
 SectionEnd
 
 Section "Device definitions" MBTFiles
@@ -78,16 +79,22 @@ SectionEnd
 ; Uninstaller
 ;--------------------------------
 Section -Uninstall
-    Delete "$INSTDIR\mbtserver_gui.exe"
-    Delete "$INSTDIR\mbtserver_cli.exe"
-    Delete "$INSTDIR\mbtclient_gui.exe"
-    Delete "$INSTDIR\mbtclient_cli.exe"
+    Delete "$INSTDIR\qmbtserver.exe"
+    Delete "$INSTDIR\qmbtclient.exe"
+    Delete "$INSTDIR\mbtserver.exe"
+    Delete "$INSTDIR\mbtclient.exe"
     Delete "$INSTDIR\Uninstall.exe"
     Delete "$INSTDIR\*.json"
     Delete "$INSTDIR\README.md"
     Delete "$INSTDIR\LICENSE"
     RMDir "$INSTDIR"
     DeleteRegKey HKLM "${REGPATH_UNINSTSUBKEY}"
+
+    EnVar::Check "PATH" "$INSTDIR"
+    Pop $0
+    ${If} $0 == 0
+        EnVar::DeleteValue "PATH" "$INSTDIR"
+    ${EndIf}
 
     !insertmacro MUI_STARTMENU_GETFOLDER Application $StartMenuFolder
     Delete "$SMPROGRAMS\$StartMenuFolder\MBTServer.lnk"
