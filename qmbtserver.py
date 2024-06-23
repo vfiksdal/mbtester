@@ -102,7 +102,7 @@ class ServerTableFrame(QFrame):
     def doubleClicked(self,row,column):
         address=self.table[row][3]
         register=self.server.profile['datablocks'][self.datablock][address]
-        dialog=SetValue(register)
+        dialog=SetValue('Change register',register)
         if dialog.exec_()!=0:
             value=Utils.encodeRegister(register,dialog.value)
             getattr(self.server,self.datablock).setValues(int(address),value)

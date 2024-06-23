@@ -61,8 +61,8 @@ class Utils():
                 files.append(path+file)
         return files
 
-    ##\brief Load profile from file or memory
-    # \param filename Filename or name of predefined profile
+    ##\brief Load profile from file
+    # \param filename Filename of profile
     # \return Loaded profile
     def loadProfile(filename):
         # Read and parse json input

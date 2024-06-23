@@ -173,10 +173,11 @@ class StandardItem(QStandardItem):
 # \brief Custom dialog to set a value
 class SetValue(QDialog):
     ##\brief Initializes the dialog
+    # \param title Dialog title to describe action
     # \param register Dictionary describing the register to set
-    def __init__(self,register):
+    def __init__(self,title,register):
         super(SetValue,self).__init__(None)
-        self.setWindowTitle("Change modbus register")
+        self.setWindowTitle(title)
         self.register=register
         layout=QVBoxLayout()
         self.valueedit=QLineEdit(str(register['value']))

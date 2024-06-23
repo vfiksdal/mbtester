@@ -80,7 +80,7 @@ class ClientTableFrame(QFrame):
             resp=QMessageBox.question(self,'Confirmation','This value is marked read-only.\n\nDo you want to try overwriting it anyway?')
             if resp==QMessageBox.StandardButton.No: return
 
-        dialog=SetValue(register)
+        dialog=SetValue('Write register',register)
         if dialog.exec_()!=0:
             register['value']=dialog.value
             self.worker.write(self.datablock,address,dialog.value)
