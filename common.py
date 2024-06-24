@@ -6,7 +6,8 @@
 from pymodbus.payload import BinaryPayloadBuilder
 from pymodbus.payload import BinaryPayloadDecoder
 from pymodbus.datastore import ModbusSparseDataBlock
-import json,logging,sys,os,argparse,struct
+import json,logging,sys,os,argparse,struct,socket
+import serial.tools.list_ports
 
 ##\class App
 # \brief Argument parsing and version handling
@@ -19,7 +20,7 @@ class App():
     ##\brief Get application version
     # \return Current version as a string
     def getVersion():
-        return '0.3.3'
+        return '0.3.4'
 
     ##\brief Get application title
     # \return Application title as a string
@@ -52,8 +53,19 @@ class App():
         parser.add_argument('-B','--bytesize',choices=[7,8],help='Serial bits per byte',dest='bytesize',default=8,type=int)
         parser.add_argument('-t','--timeout',help='Request timeout',dest='timeout',default=1,type=int)
         parser.add_argument('-p','--profile',help='MODBUS register profile to serve',dest='profile',default='',type=str)
+        parser.add_argument('-L','--list',choices=['profiles', 'serial'],help='List available resources',dest='list',default=None,type=str)
         parser.add_argument('-l','--log',choices=['critical', 'error', 'warning', 'info', 'debug'],help='Log level, default is info',dest='log',default='info',type=str)
-        return parser.parse_args()
+        args=parser.parse_args()
+        if args.list=='profiles':
+            profiles=Profiles.listProfiles(args)
+            for profile in profiles: print(profile[0]+profile[1])
+            sys.exit()
+        if args.list=='serial':
+            ports=serial.tools.list_ports.comports()
+            for port, desc, hwid in sorted(ports): print(port+'\t'+desc)
+            sys.exit()
+
+        return args
 
     ##\brief Reports configuration
     # \param args Commandline arguments to report
@@ -212,6 +224,20 @@ class Utilities():
         if argument=='co': return 'Coil'
         if argument=='hr': return 'Holding register'
         if argument=='ir': return 'Input register'
+
+    ##\brief Checks if a host/port is bindable
+    # \param host Host interface to bind to
+    # \param port Network port to bind to
+    # \return True if bind was successfull
+    def checkSocket(host, port):
+        sock=socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        try:
+            sock.bind((host, port))
+            retval=True
+        except:
+            retval=False
+        sock.close()
+        return retval
 
     ##\brief Minimizes margins of a QT layout
     # \param layout Layout to minimize

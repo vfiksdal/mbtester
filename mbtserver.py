@@ -48,6 +48,13 @@ class AsyncServerObject():
 
     ##\brief Starts the modbus server
     async def startServer(self):
+        # Check if socket is available
+        if self.args.comm=='tcp' or self.args.comm=='udp':
+            if not Utilities.checkSocket(self.args.host,int(self.args.port)):
+                logging.critical('Could not bind to network interface: '+str(self.args.host)+':'+str(self.args.port))
+                return False
+
+        # Start server
         self.running=True
         args=self.args
         if args.comm=='tcp':    self.server = await StartAsyncTcpServer(context=self.mastercontext,identity=self.identity,address=(args.host,args.port),framer=args.framer)
@@ -79,6 +86,12 @@ class ServerObject(AsyncServerObject):
     ##\brief Starts the modbus server in a background thread
     # \returns True if the server is running
     def startServer(self):
+        # Check if socket is available
+        if self.args.comm=='tcp' or self.args.comm=='udp':
+            if not Utilities.checkSocket(self.args.host,int(self.args.port)):
+                logging.critical('Could not bind to network interface: '+str(self.args.host)+':'+str(self.args.port))
+                return False
+
         # Start server in background thread
         self.thread=threading.Thread(target=self.runServer)
         self.thread.start()
@@ -119,3 +132,5 @@ if __name__ == "__main__":
     # Run async server
     server=AsyncServerObject(args)
     asyncio.run(server.startServer())
+    #server=ServerObject(args)
+    #server.startServer()
