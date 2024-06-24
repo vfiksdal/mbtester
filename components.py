@@ -214,7 +214,7 @@ class Connect(QDialog):
         self.profilelist=QComboBox()
         self.commlist=QComboBox()
         self.framerlist=QComboBox()
-        self.slaveidedit=QLineEdit(str(args.slaveid))
+        self.deviceidedit=QLineEdit(str(args.deviceid))
         self.hostlabel=QLabel('Host address')
         self.hostedit=QLineEdit(str(args.host))
         self.nportlabel=QLabel('Network port')
@@ -236,8 +236,8 @@ class Connect(QDialog):
         vlayout.addWidget(self.commlist)
         vlayout.addWidget(QLabel('MODBUS framer'))
         vlayout.addWidget(self.framerlist)
-        vlayout.addWidget(QLabel('Slave ID'))
-        vlayout.addWidget(self.slaveidedit)
+        vlayout.addWidget(QLabel('Device ID'))
+        vlayout.addWidget(self.deviceidedit)
         vlayout.addWidget(self.hostlabel)
         vlayout.addWidget(self.hostedit)
         vlayout.addWidget(self.nportlabel)
@@ -359,7 +359,7 @@ class Connect(QDialog):
             else:
                 self.args.host=self.hostedit.text()
                 self.args.port=self.nportedit.text()
-            self.args.slaveid=int(self.slaveidedit.text())
+            self.args.deviceid=int(self.deviceidedit.text())
             super().accept()
         except Exception as error:
             logging.error(str(error))

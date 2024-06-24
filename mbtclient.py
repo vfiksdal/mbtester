@@ -20,7 +20,7 @@ class AsyncClientObject():
     async def __init__(self,args):
         # Parse profiles
         self.profile=Profiles.loadProfile(args,args.profile)
-        self.slaveid=args.slaveid
+        self.deviceid=args.deviceid
         self.offset=args.offset
 
         # Load client object
@@ -51,10 +51,10 @@ class AsyncClientObject():
             count=Registers.registersPerValue(registerdata)
 
             # Execute request
-            if datablock=='di': response = await self.client.read_discrete_inputs(registeraddress,count,self.slaveid)
-            if datablock=='co': response = await self.client.read_coils(registeraddress,count,self.slaveid)
-            if datablock=='hr': response = await self.client.read_holding_registers(registeraddress,count,self.slaveid)
-            if datablock=='ir': response = await self.client.read_input_registers(registeraddress,count,self.slaveid)
+            if datablock=='di': response = await self.client.read_discrete_inputs(registeraddress,count,self.deviceid)
+            if datablock=='co': response = await self.client.read_coils(registeraddress,count,self.deviceid)
+            if datablock=='hr': response = await self.client.read_holding_registers(registeraddress,count,self.deviceid)
+            if datablock=='ir': response = await self.client.read_input_registers(registeraddress,count,self.deviceid)
         except ModbusException as exc:
             logging.error('ModbusException: '+str(exc))
             return None
@@ -78,8 +78,8 @@ class AsyncClientObject():
             values=Registers.encodeRegister(registerdata,value)
 
             # Execute request
-            if datablock=='co': response = await self.client.write_coil(registeraddress,value,self.slaveid)
-            if datablock=='hr': response = await self.client.write_registers(registeraddress,values,self.slaveid)
+            if datablock=='co': response = await self.client.write_coil(registeraddress,value,self.deviceid)
+            if datablock=='hr': response = await self.client.write_registers(registeraddress,values,self.deviceid)
         except ModbusException as exc:
             logging.error('ModbusException: '+str(exc))
             return False
@@ -119,7 +119,7 @@ class ClientObject():
     def __init__(self,args):
         # Parse profiles
         self.profile=Profiles.loadProfile(args,args.profile)
-        self.slaveid=args.slaveid
+        self.deviceid=args.deviceid
         self.offset=args.offset
 
         # Load client object
@@ -150,10 +150,10 @@ class ClientObject():
             count=Registers.registersPerValue(registerdata)
 
             # Execute request
-            if datablock=='di': response = self.client.read_discrete_inputs(registeraddress,count,self.slaveid)
-            if datablock=='co': response = self.client.read_coils(registeraddress,count,self.slaveid)
-            if datablock=='hr': response = self.client.read_holding_registers(registeraddress,count,self.slaveid)
-            if datablock=='ir': response = self.client.read_input_registers(registeraddress,count,self.slaveid)
+            if datablock=='di': response = self.client.read_discrete_inputs(registeraddress,count,self.deviceid)
+            if datablock=='co': response = self.client.read_coils(registeraddress,count,self.deviceid)
+            if datablock=='hr': response = self.client.read_holding_registers(registeraddress,count,self.deviceid)
+            if datablock=='ir': response = self.client.read_input_registers(registeraddress,count,self.deviceid)
         except ModbusException as exc:
             logging.error('ModbusException: '+str(exc))
             return None
@@ -177,8 +177,8 @@ class ClientObject():
             values=Registers.encodeRegister(registerdata,value)
 
             # Execute request
-            if datablock=='co': response = self.client.write_coil(registeraddress,value,self.slaveid)
-            if datablock=='hr': response = self.client.write_registers(registeraddress,values,self.slaveid)
+            if datablock=='co': response = self.client.write_coil(registeraddress,value,self.deviceid)
+            if datablock=='hr': response = self.client.write_registers(registeraddress,values,self.deviceid)
         except ModbusException as exc:
             logging.error('ModbusException: '+str(exc))
             return False
@@ -389,18 +389,20 @@ if __name__ == "__main__":
         sys.exit()
 
     # Enable logging
-    logging.basicConfig(level=logging.INFO,stream=sys.stdout,format='%(asctime)s - %(levelname)s - %(message)s')
-    pymodbus_apply_logging_config(args.log.upper())
-    debug = (args.log.upper()=='DEBUG')
+    args.log=args.log.upper()
+    level=logging._nameToLevel[args.log]
+    logging.basicConfig(level=level,stream=sys.stdout,format='%(asctime)s %(levelname)s\t%(message)s')
+    pymodbus_apply_logging_config(args.log)
+    debug = (args.log=='DEBUG')
+
+    # Present options
+    print(aboutstring+'\n')
+    print(App.reportConfig(args))
 
     # Download client data
     client=ClientObject(args)
     output=client.download()
     client.close()
-
-    # Present options
-    print(aboutstring+'\n')
-    print(App.reportConfig(args))
 
     # Print result
     output=json.dumps(output,indent=4)

@@ -35,8 +35,8 @@ class AsyncServerObject():
         self.hr=DataBlock(self.profile,'hr')
         self.ir=DataBlock(self.profile,'ir')
         self.slavecontext=ModbusSlaveContext(di=self.di, co=self.co, hr=self.hr, ir=self.ir)
-        if args.slaveid:
-            self.mastercontext=ModbusServerContext(slaves={args.slaveid:self.slavecontext},single=False)
+        if args.deviceid:
+            self.mastercontext=ModbusServerContext(slaves={args.deviceid:self.slavecontext},single=False)
         else:
             self.mastercontext=ModbusServerContext(slaves=self.slavecontext,single=True)
         self.identity=ModbusDeviceIdentification(info_name=self.profile['identity'])

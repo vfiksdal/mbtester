@@ -302,7 +302,6 @@ class ClientUI(QMainWindow):
         action_setinterval_1m=QAction('1 minute',self,checkable=True,checked=True)
         action_setinterval_1m.setStatusTip('Set polling interval to 1 minute')
         action_setinterval_1m.triggered.connect(lambda: self.worker.setInterval(60))
-
         action_setinterval_5m=QAction('5 minutes',self,checkable=True,checked=False)
         action_setinterval_5m.setStatusTip('Set polling interval to 5 minutes')
         action_setinterval_5m.triggered.connect(lambda: self.worker.setInterval(60*5))
