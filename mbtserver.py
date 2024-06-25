@@ -104,12 +104,7 @@ class ServerObject(AsyncServerObject):
             ServerStop()
             self.thread.join()
 
-
-if __name__ == "__main__":
-    # Parse command line options
-    aboutstring=App.getAbout('server','CLI server for MODBUS Testing')
-    args = App.parseArguments(aboutstring)
-
+def RunServer(args):
     # Check for profile
     if len(args.profile)==0:
         print('Please set a profile to use (See -p or --profile parameter)')
@@ -123,14 +118,21 @@ if __name__ == "__main__":
     level=logging._nameToLevel[args.log]
     logging.basicConfig(level=level,stream=sys.stdout,format='%(asctime)s %(levelname)s\t%(message)s')
     pymodbus_apply_logging_config(args.log)
-    debug = (args.log=='DEBUG')
 
     # Present options
-    print(aboutstring+'\n')
     print(App.reportConfig(args))
 
     # Run async server
     server=AsyncServerObject(args)
-    asyncio.run(server.startServer())
+    asyncio.run(server.startServer(),debug=(args.log=='DEBUG'))
     #server=ServerObject(args)
     #server.startServer()
+
+if __name__ == "__main__":
+    # Parse command line options
+    aboutstring=App.getAbout('server','CLI server for MODBUS Testing')
+    print(aboutstring+'\n')
+    args = App.parseArguments(offset=0)
+
+    # Run server
+    RunServer(args)

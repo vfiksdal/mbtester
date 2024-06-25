@@ -91,10 +91,11 @@ class ClientUI(QMainWindow):
     ##\brief Loads components and sets layout
     # \param args Parsed commandline arguments
     # \param parent Parent object
-    def __init__(self,args,parent=None):
+    def __init__(self,args,aboutstring,parent=None):
         super(ClientUI,self).__init__(parent)
 
         # Try to connect with dialog
+        self.aboutstring=aboutstring
         self.client=None
         self.conframe=ConFrame(args)
         self.conframe.showMessagebox(True)
@@ -348,7 +349,7 @@ class ClientUI(QMainWindow):
         action_setinterval.addAction(action_setinterval_24h)
         action_setinterval.addAction(action_setinterval_none)
         action_about=QAction('About '+App.getTitle('Client'),self)
-        action_about.triggered.connect(lambda: QMessageBox.about(self,'About','\t\t\t\t\t\t\t\t\t'+aboutstring+'\n\n'))
+        action_about.triggered.connect(lambda: QMessageBox.about(self,'About','\t\t\t\t\t\t\t\t\t'+self.aboutstring+'\n\n'))
 
         # Creating menus
         menubar = QMenuBar(self)
@@ -392,10 +393,16 @@ class ClientUI(QMainWindow):
         filename, _ = QFileDialog.getSaveFileName(self,title,default,filter,options=options)
         return filename
 
+def RunClient(args,aboutstring):
+    app=QApplication(sys.argv)
+    window=ClientUI(args,aboutstring)
+    app.exec()
 
-# Load application window and start application
-aboutstring=App.getAbout('client','GUI client for MODBUS Testing')
-args=App.parseArguments(aboutstring,-1)
-app=QApplication(sys.argv)
-window=ClientUI(args)
-app.exec()
+if __name__ == "__main__":
+    # Parse command line options
+    aboutstring=App.getAbout('client','GUI client for MODBUS Testing')
+    print(aboutstring+'\n')
+    args = App.parseArguments(offset=-1)
+
+    # Run client
+    RunClient(args,aboutstring)

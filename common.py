@@ -20,16 +20,17 @@ class App():
     ##\brief Get application version
     # \return Current version as a string
     def getVersion():
-        return '0.3.4'
+        return '0.3.5'
 
     ##\brief Get application title
     # \return Application title as a string
-    def getTitle(role):
-        return App.getName()+' '+role.capitalize()+' '+App.getVersion()
+    def getTitle(role=''):
+        if len(role): role=' '+role.capitalize()
+        return App.getName()+role+' '+App.getVersion()
 
     ##\brief Get application description
     # \return Application description as a string
-    def getAbout(role,desc):
+    def getAbout(role='',desc='MODBUS Testing Utilities'):
         return App.getTitle(role)+'\n'+desc+'\n'+'Vegard Fiksdal(C)2024'
 
     ##\brief Parse commandline arguments
@@ -38,9 +39,9 @@ class App():
     # \return Parsed arguments as an object
     #
     # The offset will typically be 0 for a server, and -1 for a client due to modbus oddness.
-    def parseArguments(about,offset=0):
+    def parseArguments(args=None,usage='%(prog)s [options]',parents=[],offset=0):
         argformatter=lambda prog: argparse.RawTextHelpFormatter(prog,max_help_position=54)
-        parser=argparse.ArgumentParser(description=about,formatter_class=argformatter)
+        parser=argparse.ArgumentParser(usage=usage,formatter_class=argformatter,parents=parents)
         parser.add_argument('-c','--comm',choices=['tcp', 'udp', 'serial'],help='Communication interface, default is tcp',dest='comm',default='tcp',type=str)
         parser.add_argument('-f','--framer',choices=['ascii', 'rtu', 'socket'],help='MODBUS framer, default is rtu',dest='framer',default='rtu',type=str)
         parser.add_argument('-d','--deviceid',help='Device ID',dest='deviceid',default=1,type=int)
@@ -55,7 +56,7 @@ class App():
         parser.add_argument('-p','--profile',help='MODBUS register profile to serve',dest='profile',default='',type=str)
         parser.add_argument('-L','--list',choices=['profiles', 'serial'],help='List available resources',dest='list',default=None,type=str)
         parser.add_argument('-l','--log',choices=['critical', 'error', 'warning', 'info', 'debug'],help='Log level, default is info',dest='log',default='info',type=str)
-        args=parser.parse_args()
+        args=parser.parse_args(args)
         if args.list=='profiles':
             profiles=Profiles.listProfiles(args)
             for profile in profiles: print(profile[0]+profile[1])

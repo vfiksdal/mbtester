@@ -113,10 +113,11 @@ class ServerUI(QMainWindow):
     ##\brief Loads components and sets layout
     # \param args Parsed commandline arguments
     # \param parent Parent object
-    def __init__(self,args,parent=None):
+    def __init__(self,args,aboutstring,parent=None):
         super(ServerUI,self).__init__(parent)
 
         # Try to connect with dialog
+        self.aboutstring=aboutstring
         self.server=None
         self.conframe=ConFrame(args)
         self.conframe.showMessagebox(True)
@@ -208,7 +209,7 @@ class ServerUI(QMainWindow):
         splitter.addWidget(scrollarea)
         splitter.setSizes([200,500])
         self.setCentralWidget(splitter)
-        self.setWindowTitle(application)
+        self.setWindowTitle(App.getTitle('server'))
         self.resize(800,600)
         self.showMaximized()
         logging.debug('Loaded GUI components')
@@ -258,8 +259,8 @@ class ServerUI(QMainWindow):
         action_saveprofile.triggered.connect(lambda: Profiles.saveProfile(self.server.profile,self.getFilename('Profile','json')))
         action_exit=QAction('Exit',self)
         action_exit.triggered.connect(lambda: self.close())
-        action_about=QAction('About '+application,self)
-        action_about.triggered.connect(lambda: QMessageBox.about(self,'About','\t\t\t\t\t\t\t\t\t'+aboutstring+'\n\n'))
+        action_about=QAction('About '+App.getTitle('server'),self)
+        action_about.triggered.connect(lambda: QMessageBox.about(self,'About','\t\t\t\t\t\t\t\t\t'+self.aboutstring+'\n\n'))
 
         # Creating menus
         menubar = QMenuBar(self)
@@ -285,16 +286,16 @@ class ServerUI(QMainWindow):
         filename, _ = QFileDialog.getSaveFileName(self,title,default,filter,options=options)
         return filename
 
+def RunServer(args,aboutstring):
+    app=QApplication(sys.argv)
+    window=ServerUI(args,aboutstring)
+    app.exec()
 
-# Simple identification
-aboutstring=App.getAbout('server','GUI server for MODBUS Testing')
-application=App.getName()+' Server '+App.getVersion()
-aboutstring=application+'\n'
-aboutstring+='GUI server for MODBUS Testing\n'
-aboutstring+='Vegard Fiksdal(C)2024'
+if __name__ == "__main__":
+    # Parse command line options
+    aboutstring=App.getAbout('server','GUI server for MODBUS Testing')
+    print(aboutstring+'\n')
+    args = App.parseArguments(offset=0)
 
-# Load application window and start application
-args=App.parseArguments(aboutstring)
-app=QApplication(sys.argv)
-window=ServerUI(args)
-app.exec()
+    # Run server
+    RunServer(args,aboutstring)
