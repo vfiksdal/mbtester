@@ -1,4 +1,4 @@
-##\package mbtserver
+##\package qmbtserver
 # \brief MBTester Server using Qt
 #
 # Vegard Fiksdal (C) 2024
@@ -301,10 +301,6 @@ def RunServer(args,aboutstring):
     app.exec()
 
 if __name__ == "__main__":
-    # Parse command line options
     aboutstring=App.getAbout('server','GUI server for MODBUS Testing')
     print(aboutstring+'\n')
-    args = App.parseArguments(offset=0)
-
-    # Run server
-    RunServer(args,aboutstring)
+    RunServer(Loader(gui=True).serverargs,aboutstring)

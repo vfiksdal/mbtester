@@ -1,9 +1,8 @@
-##\package mbserver
+##\package mbtserver
 # \brief CLI MODBUS servers
 #
 # Vegard Fiksdal (C) 2024
 #
-from pymodbus import pymodbus_apply_logging_config
 from pymodbus.device import ModbusDeviceIdentification
 from pymodbus.datastore import (
     ModbusServerContext,
@@ -20,7 +19,7 @@ from pymodbus.server import (
     ServerStop
 )
 from common import *
-import asyncio,logging,sys,threading,time
+import threading,time
 
 ##\class AsyncServerObject
 # \brief Asynchrous modbus server
@@ -104,38 +103,19 @@ class ServerObject(AsyncServerObject):
             ServerStop()
             self.thread.join()
 
-def RunServer(args):
-    # Check for profile
-    if len(args.profile)==0:
-        print('Please set a profile to use (See -p or --profile parameter)')
-        sys.exit()
-    elif not Profiles.getProfile(args,args.profile):
-        print('Profile file '+args.profile+' not found')
-        sys.exit()
-
-    # Enable logging
-    args.log=args.log.upper()
-    level=logging._nameToLevel[args.log]
-    logging.basicConfig(level=level,stream=sys.stdout,format='%(asctime)s %(levelname)s\t%(message)s')
-    pymodbus_apply_logging_config(args.log)
-
-    # Present options
-    print(App.reportConfig(args))
-
-    # Run async server
-    #server=AsyncServerObject(args)
-    #asyncio.run(server.startServer(),debug=(args.log=='DEBUG'))
-    server=ServerObject(args)
-    if server.startServer():
-        return server
-    else:
-        return None
+    ##\brief Wait for server to terminate
+    def waitServer(self):
+        try:
+            while self.running:
+                time.sleep(0.5)
+        except:
+            self.stopServer()
 
 if __name__ == "__main__":
     # Parse command line options
-    aboutstring=App.getAbout('server','CLI server for MODBUS Testing')
-    print(aboutstring+'\n')
-    args = App.parseArguments(offset=0)
-
-    # Run server
-    RunServer(args)
+    print(App.getAbout('server','CLI server for MODBUS Testing')+'\n')
+    serverargs=Loader().serverargs
+    print(App.reportConfig(serverargs))
+    server=ServerObject(serverargs)
+    if server.startServer():
+        server.waitServer()

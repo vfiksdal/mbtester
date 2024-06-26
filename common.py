@@ -3,6 +3,7 @@
 #
 # Vegard Fiksdal (C) 2024
 #
+from pymodbus import pymodbus_apply_logging_config
 from pymodbus.payload import BinaryPayloadBuilder
 from pymodbus.payload import BinaryPayloadDecoder
 from pymodbus.datastore import ModbusSparseDataBlock
@@ -20,7 +21,7 @@ class App():
     ##\brief Get application version
     # \return Current version as a string
     def getVersion():
-        return '0.3.5'
+        return '0.3.6'
 
     ##\brief Get application title
     # \return Application title as a string
@@ -32,41 +33,6 @@ class App():
     # \return Application description as a string
     def getAbout(role='',desc='MODBUS Testing Utilities'):
         return App.getTitle(role)+'\n'+desc+'\n'+'Vegard Fiksdal(C)2024'
-
-    ##\brief Parse commandline arguments
-    # \param about String to describe program
-    # \param offset Default register address offset
-    # \return Parsed arguments as an object
-    #
-    # The offset will typically be 0 for a server, and -1 for a client due to modbus oddness.
-    def parseArguments(args=None,usage='%(prog)s [options]',parents=[],offset=0):
-        argformatter=lambda prog: argparse.RawTextHelpFormatter(prog,max_help_position=54)
-        parser=argparse.ArgumentParser(usage=usage,formatter_class=argformatter,parents=parents)
-        parser.add_argument('-c','--comm',choices=['tcp', 'udp', 'serial'],help='Communication interface, default is tcp',dest='comm',default='tcp',type=str)
-        parser.add_argument('-f','--framer',choices=['ascii', 'rtu', 'socket'],help='MODBUS framer, default is rtu',dest='framer',default='rtu',type=str)
-        parser.add_argument('-d','--deviceid',help='Device ID',dest='deviceid',default=1,type=int)
-        parser.add_argument('-o','--offset',help='Register address offset (client only)',dest='offset',default=offset,type=int)
-        parser.add_argument('-H','--host',help='Network host, default is 127.0.0.1',dest='host',default='127.0.0.1',type=str)
-        parser.add_argument('-P','--port',help='TCP/UDP network port',dest='port',default='502',type=str)
-        parser.add_argument('-s','--serial',help='Serial device port name',dest='serial',default='COM1',type=str)
-        parser.add_argument('-b','--baudrate',help='Serial device baud rate',dest='baudrate',default=9600,type=int)
-        parser.add_argument('-x','--parity',choices=['O', 'E', 'N'],help='Serial device parity',dest='parity',default='N',type=str)
-        parser.add_argument('-B','--bytesize',choices=[7,8],help='Serial bits per byte',dest='bytesize',default=8,type=int)
-        parser.add_argument('-t','--timeout',help='Request timeout',dest='timeout',default=1,type=int)
-        parser.add_argument('-p','--profile',help='MODBUS register profile to serve',dest='profile',default='',type=str)
-        parser.add_argument('-L','--list',choices=['profiles', 'serial'],help='List available resources',dest='list',default=None,type=str)
-        parser.add_argument('-l','--log',choices=['critical', 'error', 'warning', 'info', 'debug'],help='Log level, default is info',dest='log',default='info',type=str)
-        args=parser.parse_args(args)
-        if args.list=='profiles':
-            profiles=Profiles.listProfiles(args)
-            for profile in profiles: print(profile[0]+profile[1])
-            sys.exit()
-        if args.list=='serial':
-            ports=serial.tools.list_ports.comports()
-            for port, desc, hwid in sorted(ports): print(port+'\t'+desc)
-            sys.exit()
-
-        return args
 
     ##\brief Reports configuration
     # \param args Commandline arguments to report
@@ -406,3 +372,93 @@ class DataBlock(ModbusSparseDataBlock):
     # \param count Number of 16-bit registers to validate
     def validate(self, address, count=1):
         return super().validate(address,count)
+
+class Loader():
+    class flags:
+        server=False
+        client=False
+
+    def __init__(self,usage='%(prog)s --client [options] | --server [options]',gui=False):
+        # Split arguments in client- and server arguments
+        clientargs=[]
+        serverargs=[]
+        client,server=False,False
+        for i in range(1,len(sys.argv)):
+            aclient=sys.argv[i]=='--client' or sys.argv[i]=='-C'
+            aserver=sys.argv[i]=='--server' or sys.argv[i]=='-S'
+            if aclient:     client,server=True,False
+            elif aserver:   client,server=False,True
+            elif client:    clientargs.append(sys.argv[i])
+            elif server:    serverargs.append(sys.argv[i])
+            else:
+                clientargs.append(sys.argv[i])
+                serverargs.append(sys.argv[i])
+
+        # Use parent parser to get --client and --server option in the parser
+        parser=argparse.ArgumentParser(add_help=False)
+        parser.add_argument('-C','--client',help='Run as MODBUS client',dest='client',action='store_true')
+        parser.add_argument('-S','--server',help='Run as MODBUS server',dest='server',action='store_true')
+
+        # Parse arguments
+        serverargs=self.parseArguments(args=serverargs,parents=[parser],usage=usage,offset=0)
+        clientargs=self.parseArguments(args=clientargs,parents=[parser],usage=usage,offset=-1)
+
+        # Check for common profile
+        profile=''
+        if len(clientargs.profile): profile=clientargs.profile
+        if len(serverargs.profile): profile=serverargs.profile
+        serverargs.profile=profile
+        clientargs.profile=profile
+        if not gui:
+            if len(profile)==0:
+                print('Please set a profile to use (See -p or --profile parameter)')
+                sys.exit()
+            elif not Profiles.getProfile(serverargs,profile):
+                print('Profile file '+serverargs.profile+' not found')
+                sys.exit()
+
+        # Enable logging
+        level=logging._nameToLevel[serverargs.log.upper()]
+        if level<logging._nameToLevel[clientargs.log.upper()]:
+            level=logging._nameToLevel[clientargs.log.upper()]
+        serverargs.log=logging._levelToName[level]
+        clientargs.log=logging._levelToName[level]
+        logging.basicConfig(level=level,stream=sys.stdout,format='%(asctime)s %(levelname)s\t%(message)s')
+        pymodbus_apply_logging_config(serverargs.log)
+
+        # Check client- server flags
+        self.flags.client='--client' in sys.argv or '-C' in sys.argv
+        self.flags.server='--server' in sys.argv or '-S' in sys.argv
+
+        # Assign parsed parameters
+        self.serverargs=serverargs
+        self.clientargs=clientargs
+
+
+    def parseArguments(self,args=None,usage='%(prog)s [options]',parents=[],offset=0):
+        argformatter=lambda prog: argparse.RawTextHelpFormatter(prog,max_help_position=54)
+        parser=argparse.ArgumentParser(usage=usage,formatter_class=argformatter,parents=parents)
+        parser.add_argument('-c','--comm',choices=['tcp', 'udp', 'serial'],help='Communication interface, default is tcp',dest='comm',default='tcp',type=str)
+        parser.add_argument('-f','--framer',choices=['ascii', 'rtu', 'socket'],help='MODBUS framer, default is rtu',dest='framer',default='rtu',type=str)
+        parser.add_argument('-d','--deviceid',help='Device ID',dest='deviceid',default=1,type=int)
+        parser.add_argument('-o','--offset',help='Register address offset (client only)',dest='offset',default=offset,type=int)
+        parser.add_argument('-H','--host',help='Network host, default is 127.0.0.1',dest='host',default='127.0.0.1',type=str)
+        parser.add_argument('-P','--port',help='TCP/UDP network port',dest='port',default='502',type=str)
+        parser.add_argument('-s','--serial',help='Serial device port name',dest='serial',default='COM1',type=str)
+        parser.add_argument('-b','--baudrate',help='Serial device baud rate',dest='baudrate',default=9600,type=int)
+        parser.add_argument('-x','--parity',choices=['O', 'E', 'N'],help='Serial device parity',dest='parity',default='N',type=str)
+        parser.add_argument('-B','--bytesize',choices=[7,8],help='Serial bits per byte',dest='bytesize',default=8,type=int)
+        parser.add_argument('-t','--timeout',help='Request timeout',dest='timeout',default=1,type=int)
+        parser.add_argument('-p','--profile',help='MODBUS register profile to serve',dest='profile',default='',type=str)
+        parser.add_argument('-L','--list',choices=['profiles', 'serial'],help='List available resources',dest='list',default=None,type=str)
+        parser.add_argument('-l','--log',choices=['critical', 'error', 'warning', 'info', 'debug'],help='Log level, default is info',dest='log',default='info',type=str)
+        args=parser.parse_args(args)
+        if args.list=='profiles':
+            profiles=Profiles.listProfiles(args)
+            for profile in profiles: print(profile[0]+profile[1])
+            sys.exit()
+        if args.list=='serial':
+            ports=serial.tools.list_ports.comports()
+            for port, desc, hwid in sorted(ports): print(port+'\t'+desc)
+            sys.exit()
+        return args

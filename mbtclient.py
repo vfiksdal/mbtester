@@ -3,13 +3,12 @@
 #
 # Vegard Fiksdal (C) 2024
 #
-from pymodbus import pymodbus_apply_logging_config
 import pymodbus.client as ModbusClient
 from pymodbus import (
     ExceptionResponse,
     ModbusException,
 )
-import logging,sys,threading,time
+import threading,time
 from common import *
 
 ##\class AsyncClientObject
@@ -376,38 +375,14 @@ class ClientWorker():
         self.running=False
         self.thread.join()
 
-def RunClient(args):
-    # Check for profile
-    if len(args.profile)==0:
-        print('Please set a profile to use (See -p or --profile parameter)')
-        sys.exit()
-    elif not Profiles.getProfile(args,args.profile):
-        print('Profile file '+args.profile+' does not exist')
-        sys.exit()
-
-    # Enable logging
-    args.log=args.log.upper()
-    level=logging._nameToLevel[args.log]
-    logging.basicConfig(level=level,stream=sys.stdout,format='%(asctime)s %(levelname)s\t%(message)s')
-    pymodbus_apply_logging_config(args.log)
-
-    # Present options
-    print(App.reportConfig(args))
-
-    # Download client data
-    client=ClientObject(args)
-    output=client.download()
-    client.close()
-
-    # Print result
-    output=json.dumps(output,indent=4)
-    print(str(output))
-
 if __name__ == "__main__":
     # Parse command line options
-    aboutstring=App.getAbout('client','CLI client for MODBUS Testing')
-    print(aboutstring+'\n')
-    args=App.parseArguments(offset=-1)
-
-    # Run client
-    RunClient(args)
+    print(App.getAbout('client','CLI client for MODBUS Testing')+'\n')
+    clientargs=Loader().clientargs
+    print(App.reportConfig(clientargs))
+    client=ClientObject(clientargs)
+    if client.connect():
+        output=client.download()
+        output=json.dumps(output,indent=4)
+        print(str(output))
+        client.close()
