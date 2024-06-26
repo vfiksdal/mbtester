@@ -68,17 +68,26 @@ class ServerTableFrame(QFrame):
         return len(self.table)-1,self.rcount,self.wcount
 
     ##\brief Update read/write value
+    # \param datablock Datablock containing register
     # \param address Register address that has changed
     # \param value New register value
+    # \return Original value
     #
     # This method only tags the changed value. The actual UI will be updated later on
     # the main UI thread -- See UpdateUI().
     def updateWrite(self,datablock,address,value):
         self.updates.append([address,value])
         self.wcount+=1
+        return value
 
+    ##\brief Update read/write value
+    # \param datablock Datablock containing register
+    # \param address Register address that has changed
+    # \param value New register value
+    # \return Original value
     def updateRead(self,datablock,address,value):
         self.rcount+=1
+        return value
 
     ##\brief Update UI controls
     #

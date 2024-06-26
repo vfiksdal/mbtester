@@ -20,10 +20,8 @@ def preclean():
 
 def build_bin():
     print('Building v'+App.getVersion())
-    PyInstaller.__main__.run(['qmbtserver.py','--onefile','--noconsole','--icon','extras/mbtester.ico','--name','qmbtserver'])
-    PyInstaller.__main__.run(['qmbtclient.py','--onefile','--noconsole','--icon','extras/mbtester.ico','--name','qmbtclient'])
-    PyInstaller.__main__.run(['mbtserver.py','--onefile','--name','mbtserver'])
-    PyInstaller.__main__.run(['mbtclient.py','--onefile','--name','mbtclient'])
+    PyInstaller.__main__.run(['qmbtester.py','--onefile','--noconsole','--icon','extras/mbtester.ico','--name','qmbtester'])
+    PyInstaller.__main__.run(['mbtester.py','--onefile','--name','mbtester'])
 
     print('Copying accompanying files')
     shutil.copy('extras/mbtester.ico','dist')

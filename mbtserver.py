@@ -123,10 +123,13 @@ def RunServer(args):
     print(App.reportConfig(args))
 
     # Run async server
-    server=AsyncServerObject(args)
-    asyncio.run(server.startServer(),debug=(args.log=='DEBUG'))
-    #server=ServerObject(args)
-    #server.startServer()
+    #server=AsyncServerObject(args)
+    #asyncio.run(server.startServer(),debug=(args.log=='DEBUG'))
+    server=ServerObject(args)
+    if server.startServer():
+        return server
+    else:
+        return None
 
 if __name__ == "__main__":
     # Parse command line options

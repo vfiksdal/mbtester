@@ -118,6 +118,7 @@ class ClientObject():
     # \param Parsed commandline arguments
     def __init__(self,args):
         # Parse profiles
+        print('loadprofile:'+args.profile)
         self.profile=Profiles.loadProfile(args,args.profile)
         self.deviceid=args.deviceid
         self.offset=args.offset
@@ -145,7 +146,7 @@ class ClientObject():
         response=None
         try:
             # Parse register information
-            registerdata=self.profile['datablocks'][datablock][address]
+            registerdata=self.profile['datablocks'][datablock][str(address)]
             registeraddress=int(address)+self.offset
             count=Registers.registersPerValue(registerdata)
 
@@ -172,7 +173,7 @@ class ClientObject():
         response=None
         try:
             # Parse register information
-            registerdata=self.profile['datablocks'][datablock][address]
+            registerdata=self.profile['datablocks'][datablock][str(address)]
             registeraddress=int(address)+self.offset
             values=Registers.encodeRegister(registerdata,value)
 
