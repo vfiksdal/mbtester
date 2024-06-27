@@ -399,10 +399,6 @@ def RunClient(args,aboutstring):
     app.exec()
 
 if __name__ == "__main__":
-    # Parse command line options
     aboutstring=App.getAbout('client','GUI client for MODBUS Testing')
     print(aboutstring+'\n')
-    args = App.parseArguments(offset=-1)
-
-    # Run client
-    RunClient(args,aboutstring)
+    RunClient(Loader(gui=True).clientargs,aboutstring)

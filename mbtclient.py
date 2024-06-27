@@ -40,8 +40,9 @@ class AsyncClientObject():
     ##\brief Read registers from the server
     # \param datablock Datablock to read from (di,co,hr or ir)
     # \param address Register address to read from
+    # \param decode Wether to decode value from registers after reading
     # \return Decoded value, or None upon failure
-    async def read(self,datablock,address):
+    async def read(self,datablock,address,decode=True):
         response=None
         try:
             # Parse register information
@@ -60,6 +61,7 @@ class AsyncClientObject():
         if response.isError() or isinstance(response, ExceptionResponse):
             logging.warning(str(response))
             return None
+        if not decode: return response.registers
         if datablock=='di' or datablock=='co': return response.bits[0]
         if datablock=='hr' or datablock=='ir': return Registers.decodeRegister(registerdata,response.registers)
         return None
@@ -67,18 +69,19 @@ class AsyncClientObject():
     ##\brief Write registers to the server
     # \param datablock Datablock to write to (di,co,hr or ir)
     # \param address Register address to write to
+    # \param encode Wether to encode value to registers before writing
     # \return True upon success
-    async def write(self,datablock,address,value):
+    async def write(self,datablock,address,value,encode=True):
         response=None
         try:
             # Parse register information
             registerdata=self.profile['datablocks'][datablock][address]
             registeraddress=int(address)+self.offset
-            values=Registers.encodeRegister(registerdata,value)
+            if encode: value=Registers.encodeRegister(registerdata,value)
 
             # Execute request
             if datablock=='co': response = await self.client.write_coil(registeraddress,value,self.deviceid)
-            if datablock=='hr': response = await self.client.write_registers(registeraddress,values,self.deviceid)
+            if datablock=='hr': response = await self.client.write_registers(registeraddress,value,self.deviceid)
         except ModbusException as exc:
             logging.error('ModbusException: '+str(exc))
             return False
@@ -117,7 +120,6 @@ class ClientObject():
     # \param Parsed commandline arguments
     def __init__(self,args):
         # Parse profiles
-        print('loadprofile:'+args.profile)
         self.profile=Profiles.loadProfile(args,args.profile)
         self.deviceid=args.deviceid
         self.offset=args.offset
@@ -140,8 +142,9 @@ class ClientObject():
     ##\brief Read registers from the server
     # \param datablock Datablock to read from (di,co,hr or ir)
     # \param address Register address to read from
+    # \param decode Wether to decode value from registers after reading
     # \return Decoded value, or None upon failure
-    def read(self,datablock,address):
+    def read(self,datablock,address,decode=True):
         response=None
         try:
             # Parse register information
@@ -160,6 +163,7 @@ class ClientObject():
         if response.isError() or isinstance(response, ExceptionResponse):
             logging.warning(str(response))
             return None
+        if not decode: return response.registers
         if datablock=='di' or datablock=='co': return response.bits[0]
         if datablock=='hr' or datablock=='ir': return Registers.decodeRegister(registerdata,response.registers)
         return None
@@ -167,18 +171,19 @@ class ClientObject():
     ##\brief Write registers to the server
     # \param datablock Datablock to write to (di,co,hr or ir)
     # \param address Register address to write to
+    # \param encode Wether to encode value to registers before writing
     # \return True upon success
-    def write(self,datablock,address,value):
+    def write(self,datablock,address,value,encode=True):
         response=None
         try:
             # Parse register information
             registerdata=self.profile['datablocks'][datablock][str(address)]
             registeraddress=int(address)+self.offset
-            values=Registers.encodeRegister(registerdata,value)
+            if encode: value=Registers.encodeRegister(registerdata,value)
 
             # Execute request
             if datablock=='co': response = self.client.write_coil(registeraddress,value,self.deviceid)
-            if datablock=='hr': response = self.client.write_registers(registeraddress,values,self.deviceid)
+            if datablock=='hr': response = self.client.write_registers(registeraddress,value,self.deviceid)
         except ModbusException as exc:
             logging.error('ModbusException: '+str(exc))
             return False
