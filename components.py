@@ -205,12 +205,14 @@ class SetValue(QDialog):
 class Connect(QDialog):
     ##\brief Initializes the dialog
     # \param args Parsed commandline arguments
+    # \param title Dialog title to be displayed
     # \param server True for server connection, False for client
-    def __init__(self,args):
+    def __init__(self,args,title,hideprofile=False):
         super(Connect,self).__init__(None)
-        self.setWindowTitle("MODBUS Connection")
+        self.setWindowTitle(title)
         #self.resize(500,200)
         self.args=args
+        self.profilelabel=QLabel('MODBUS profile')
         self.profilelist=QComboBox()
         self.commlist=QComboBox()
         self.framerlist=QComboBox()
@@ -230,7 +232,7 @@ class Connect(QDialog):
         self.buttons=QDialogButtonBox(self)
         self.buttons.setStandardButtons(QDialogButtonBox.Cancel|QDialogButtonBox.Ok)
         vlayout=QVBoxLayout()
-        vlayout.addWidget(QLabel('MODBUS profile'))
+        vlayout.addWidget(self.profilelabel)
         vlayout.addWidget(self.profilelist)
         vlayout.addWidget(QLabel('Communication interface'))
         vlayout.addWidget(self.commlist)
@@ -255,6 +257,11 @@ class Connect(QDialog):
         self.setLayout(vlayout)
         self.buttons.accepted.connect(self.open)
         self.buttons.rejected.connect(self.reject)
+
+        # Optionally hide profile selection
+        if hideprofile:
+            self.profilelabel.setVisible(False)
+            self.profilelist.setVisible(False)
 
         # Enumerate profiles
         default=0

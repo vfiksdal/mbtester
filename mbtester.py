@@ -15,7 +15,9 @@ if loader.flags.server and loader.flags.client:
     print(App.reportConfig(loader.serverargs))
     print('Client options:')
     print(App.reportConfig(loader.clientargs))
-    proxy=ProxyObject(loader.serverargs,loader.clientargs)
+    server=ServerObject(loader.serverargs)
+    client=ClientObject(loader.clientargs)
+    proxy=ProxyObject(server,client)
     if proxy.startProxy():
         proxy.server.waitServer()
 elif loader.flags.server:

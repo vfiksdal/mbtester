@@ -100,7 +100,7 @@ class ClientUI(QMainWindow):
         self.conframe=ConFrame(args)
         self.conframe.showMessagebox(True)
         while(True):
-            if Connect(args).exec_()!=0:
+            if Connect(args,'MODBUS Client Options').exec_()!=0:
                 self.client=ClientObject(args)
                 if self.client.connect(): break
             else:
@@ -393,12 +393,8 @@ class ClientUI(QMainWindow):
         filename, _ = QFileDialog.getSaveFileName(self,title,default,filter,options=options)
         return filename
 
-def RunClient(args,aboutstring):
-    app=QApplication(sys.argv)
-    window=ClientUI(args,aboutstring)
-    app.exec()
-
 if __name__ == "__main__":
     aboutstring=App.getAbout('client','GUI client for MODBUS Testing')
-    print(aboutstring+'\n')
-    RunClient(Loader(gui=True).clientargs,aboutstring)
+    app=QApplication(sys.argv)
+    window=ClientUI(Loader(gui=True).clientargs,aboutstring)
+    app.exec()

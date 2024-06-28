@@ -131,7 +131,7 @@ class ServerUI(QMainWindow):
         self.conframe=ConFrame(args)
         self.conframe.showMessagebox(True)
         while(True):
-            if Connect(args).exec_()!=0:
+            if Connect(args,'MODBUS Server Options').exec_()!=0:
                 self.server=ServerObject(args)
                 if self.server.startServer(): break
             else:
@@ -295,12 +295,8 @@ class ServerUI(QMainWindow):
         filename, _ = QFileDialog.getSaveFileName(self,title,default,filter,options=options)
         return filename
 
-def RunServer(args,aboutstring):
-    app=QApplication(sys.argv)
-    window=ServerUI(args,aboutstring)
-    app.exec()
-
 if __name__ == "__main__":
     aboutstring=App.getAbout('server','GUI server for MODBUS Testing')
-    print(aboutstring+'\n')
-    RunServer(Loader(gui=True).serverargs,aboutstring)
+    app=QApplication(sys.argv)
+    window=ServerUI(Loader(gui=True).serverargs,aboutstring)
+    app.exec()

@@ -7,13 +7,12 @@ from mbtserver import *
 from mbtclient import *
 
 class ProxyObject():
-    def __init__(self,serverargs,clientargs):
-        self.server=ServerObject(serverargs)
-        self.client=ClientObject(clientargs)
+    def __init__(self,server,client):
+        self.server=server
+        self.client=client
         self.lock=threading.Lock()
         self.override=True
 
-    def startProxy(self):
         # Assign server callbacks
         self.server.di.addReadCallback(self.onServerRead)
         self.server.co.addReadCallback(self.onServerRead)
@@ -24,6 +23,7 @@ class ProxyObject():
         self.server.hr.addWriteCallback(self.onServerWrite)
         self.server.ir.addWriteCallback(self.onServerWrite)
 
+    def startProxy(self):
         # Connect client
         result=False
         if self.server.startServer():
@@ -66,6 +66,8 @@ if __name__ == "__main__":
     print(App.reportConfig(loader.clientargs))
 
     # Run proxy
-    proxy=ProxyObject(loader.serverargs,loader.clientargs)
+    server=ServerObject(loader.serverargs)
+    client=ClientObject(loader.clientargs)
+    proxy=ProxyObject(server,client)
     if proxy.startProxy():
         proxy.server.waitServer()

@@ -21,7 +21,7 @@ class App():
     ##\brief Get application version
     # \return Current version as a string
     def getVersion():
-        return '0.3.6'
+        return '0.3.7'
 
     ##\brief Get application title
     # \return Application title as a string

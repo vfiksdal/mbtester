@@ -5,14 +5,22 @@
 #
 from qmbtclient import *
 from qmbtserver import *
+from qmbtproxy import *
 
 # Load appropriate code
 aboutstring=App.getAbout('server')
 print(App.getAbout()+'\n')
 loader=Loader(gui=True)
+app=QApplication(sys.argv)
 if loader.flags.server and loader.flags.client:
-    print('Proxy not yet supported')
+    aboutstring=App.getAbout('server','GUI proxy for MODBUS Testing')
+    window=ProxyUI(loader.serverargs,loader.clientargs,aboutstring)
 elif loader.flags.client:
-    RunClient(loader.clientargs,aboutstring)
+    aboutstring=App.getAbout('client','GUI client for MODBUS Testing')
+    window=ClientUI(loader.clientargs,aboutstring)
 else:
-    RunServer(loader.serverargs,aboutstring)
+    aboutstring=App.getAbout('server','GUI server for MODBUS Testing')
+    window=ServerUI(loader.serverargs,aboutstring)
+
+# Run application
+app.exec()
