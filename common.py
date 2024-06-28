@@ -3,11 +3,10 @@
 #
 # Vegard Fiksdal (C) 2024
 #
-from pymodbus import pymodbus_apply_logging_config
 from pymodbus.payload import BinaryPayloadBuilder
 from pymodbus.payload import BinaryPayloadDecoder
 from pymodbus.datastore import ModbusSparseDataBlock
-import json,logging,sys,os,argparse,struct,socket
+import json,logging,sys,os,argparse,struct,socket,datetime
 import serial.tools.list_ports
 
 ##\class App
@@ -21,7 +20,7 @@ class App():
     ##\brief Get application version
     # \return Current version as a string
     def getVersion():
-        return '0.3.7'
+        return '0.4.0'
 
     ##\brief Get application title
     # \return Application title as a string
@@ -373,12 +372,47 @@ class DataBlock(ModbusSparseDataBlock):
     def validate(self, address, count=1):
         return super().validate(address,count)
 
+##\class LogHandler
+# \brief Custom logging handler for dynamic output handling
+class LogHandler(logging.Handler):
+    ## Reference to the loghandler object (Instanciated in Loader())
+    instance=None
+
+    ## Reference to the output object (Falls back to print())
+    output=None
+
+    ## Effective log level to display
+    level=logging.INFO
+
+    ##\brief Initializes handler
+    def __init__(self):
+        super().__init__()
+        LogHandler.instance=self
+
+    ##\brief Handle output
+    # \param record Log record to handle
+    def emit(self, record):
+        if record.levelno>=LogHandler.level:
+            if LogHandler.output:
+                LogHandler.output.processLog(record)
+            else:
+                t=datetime.datetime.now().strftime('%c')
+                msg='%s  %-*s %s' % (t,8,record.levelname,record.msg)
+                print(msg)
+
+##\class Loader
+# \brief Class to handle command line arguments for all targets
 class Loader():
+    ##\class flags
+    # \brief Class to hold static flags
     class flags:
         server=False
         client=False
 
-    def __init__(self,usage='%(prog)s --client [options] | --server [options]',gui=False):
+    ##\brief Parses command line parameters and splits them into server- and client arguments
+    # \param usage Usage description for argparse
+    # \param gui Set to true to relax input requirements (User can set them in GUI)
+    def __init__(self,usage='%(prog)s --server [options] | --client [options]',gui=False):
         # Split arguments in client- and server arguments
         clientargs=[]
         serverargs=[]
@@ -398,8 +432,6 @@ class Loader():
         parser=argparse.ArgumentParser(add_help=False)
         parser.add_argument('-C','--client',help='Run as MODBUS client',dest='client',action='store_true')
         parser.add_argument('-S','--server',help='Run as MODBUS server',dest='server',action='store_true')
-
-        # Parse arguments
         serverargs=self.parseArguments(args=serverargs,parents=[parser],usage=usage,offset=0)
         clientargs=self.parseArguments(args=clientargs,parents=[parser],usage=usage,offset=-1)
 
@@ -419,12 +451,13 @@ class Loader():
 
         # Enable logging
         level=logging._nameToLevel[serverargs.log.upper()]
-        if level<logging._nameToLevel[clientargs.log.upper()]:
+        if level>logging._nameToLevel[clientargs.log.upper()]:
             level=logging._nameToLevel[clientargs.log.upper()]
         serverargs.log=logging._levelToName[level]
         clientargs.log=logging._levelToName[level]
-        logging.basicConfig(level=level,stream=sys.stdout,format='%(asctime)s %(levelname)s\t%(message)s')
-        pymodbus_apply_logging_config(serverargs.log)
+        logging.basicConfig(level=logging.DEBUG,handlers=[LogHandler()])
+        logging.getLogger('pymodbus').setLevel(logging.DEBUG)
+        LogHandler.level=level
 
         # Check client- server flags
         self.flags.client='--client' in sys.argv or '-C' in sys.argv
@@ -434,7 +467,12 @@ class Loader():
         self.serverargs=serverargs
         self.clientargs=clientargs
 
-
+    ##\brief Parses arguments
+    # \param args Arguments to parse
+    # \param usage Usage description for argparse
+    # \param parents Parent argparse objects
+    # \param offset Modbus register offset (-1 for clients due to modbus weirdness)
+    # \return Namespace containing parsed configuration
     def parseArguments(self,args=None,usage='%(prog)s [options]',parents=[],offset=0):
         argformatter=lambda prog: argparse.RawTextHelpFormatter(prog,max_help_position=54)
         parser=argparse.ArgumentParser(usage=usage,formatter_class=argformatter,parents=parents)
@@ -451,6 +489,7 @@ class Loader():
         parser.add_argument('-t','--timeout',help='Request timeout',dest='timeout',default=1,type=int)
         parser.add_argument('-p','--profile',help='MODBUS register profile to serve',dest='profile',default='',type=str)
         parser.add_argument('-L','--list',choices=['profiles', 'serial'],help='List available resources',dest='list',default=None,type=str)
+        parser.add_argument('-v','--version',help='Print version information',action='store_true')
         parser.add_argument('-l','--log',choices=['critical', 'error', 'warning', 'info', 'debug'],help='Log level, default is info',dest='log',default='info',type=str)
         args=parser.parse_args(args)
         if args.list=='profiles':
@@ -460,5 +499,8 @@ class Loader():
         if args.list=='serial':
             ports=serial.tools.list_ports.comports()
             for port, desc, hwid in sorted(ports): print(port+'\t'+desc)
+            sys.exit()
+        if args.version:
+            print(App.getAbout())
             sys.exit()
         return args

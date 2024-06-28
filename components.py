@@ -56,7 +56,6 @@ class ConFrame(QFrame):
     # \param args Parsed commandline arguments
     def __init__(self,args):
         super().__init__()
-        self.handler=LogHandler()
         self.listbox=QListWidget()
         self.listbox.setFont(QFont('cascadia mono'))
         self.dropdown=QComboBox()
@@ -85,6 +84,9 @@ class ConFrame(QFrame):
         self.setLayout(layout)
         Utilities.setMargins(layout)
 
+        # Assign ourselves as log output
+        LogHandler.output=self
+
         # Use a timer to process data from the queue
         self.timer=QTimer()
         self.timer.timeout.connect(self.update)
@@ -96,13 +98,16 @@ class ConFrame(QFrame):
     def currentIndexChanged(self,index):
         levelname=self.dropdown.itemText(index)
         level=logging._nameToLevel[levelname]
-        pymodbus_apply_logging_config(levelname)
-        logging.basicConfig(level=level,handlers=[self.handler])
+        LogHandler.level=level
 
     ##\brief Clear existing log
     def clear(self):
         self.messages=[]
         self.listbox.clear()
+
+    ##\brief Process messages from logger
+    def processLog(self,message):
+        self.messages.append(message)
 
     ##\brief Manually adds a text string
     # \param text Text string to add
@@ -129,28 +134,15 @@ class ConFrame(QFrame):
 
     ##\brief Updates GUI with added messages
     def update(self):
-        if self.handler:
-            messages=self.handler.messages
-            self.handler.messages=[]
-            for message in messages:
-                if self.msgbox and (message.levelno==logging.ERROR or message.levelno==logging.CRITICAL):
-                    QMessageBox.critical(self,message.module,str(message.msg))
-                s='%s  %-*s %s' % (datetime.datetime.now().strftime('%c'),8,message.levelname,message.msg)
-                self.listbox.addItem(s)
-            if len(messages):
-                self.listbox.scrollToBottom()
-
-##\class LogHandler
-# \brief Custom logging handler for GUI output
-class LogHandler(logging.Handler):
-    ##\brief Initializes handler
-    def __init__(self):
+        messages=self.messages
         self.messages=[]
-        super().__init__()
-
-    def emit(self, record):
-        self.messages.append(record)
-
+        for message in messages:
+            if self.msgbox and (message.levelno==logging.ERROR or message.levelno==logging.CRITICAL):
+                QMessageBox.critical(self,message.module,str(message.msg))
+            s='%s  %-*s %s' % (datetime.datetime.now().strftime('%c'),8,message.levelname,message.msg)
+            self.listbox.addItem(s)
+        if len(messages):
+            self.listbox.scrollToBottom()
 
 ##\class StandardItem
 # \brief Define how a standard treeview item should look like

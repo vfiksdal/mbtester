@@ -8,8 +8,6 @@ from qmbtserver import *
 from qmbtproxy import *
 
 # Load appropriate code
-aboutstring=App.getAbout('server')
-print(App.getAbout()+'\n')
 loader=Loader(gui=True)
 app=QApplication(sys.argv)
 if loader.flags.server and loader.flags.client:
