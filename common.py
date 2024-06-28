@@ -20,7 +20,7 @@ class App():
     ##\brief Get application version
     # \return Current version as a string
     def getVersion():
-        return '0.4.0'
+        return '0.4.1'
 
     ##\brief Get application title
     # \return Application title as a string
@@ -282,8 +282,9 @@ class Registers():
         elif register['dtype']=='word':      value = decoder.decode_16bit_int()
         elif register['dtype']=='int':       value = decoder.decode_32bit_int()
         elif register['dtype']=='bit':
-            value = decoder.decode_bits()
-            if len(value)>1: value=value[0]
+            if isinstance(values,list):
+                values=values[0]
+            value=bool(values)
         elif register['dtype']=='string':
             value = decoder.decode_string(len(register['value'])).decode('utf-8')
         else: logging.error('Decoding unknown datatype: '+str(register['dtype']))
@@ -352,18 +353,20 @@ class DataBlock(ModbusSparseDataBlock):
     # \param address Register address to write to
     # \param value Values to write
     def setValues(self, address, value):
-        super().setValues(address,value)
-        self.profile['datablocks'][self.datablock][str(address)]['value']=value
         for callback in self.wcallbacks:
-            callback(self.datablock,address,value)
+            value=callback(self.datablock,address,value)
+        super().setValues(address,value)
+        #self.profile['datablocks'][self.datablock][str(address)]['value']=value
 
     ##\brief Get modbus register contents
     # \param address Register address to read from
     # \param count Number of 16-bit registers to read
+    # \return Values
     def getValues(self, address, count=1):
         values = super().getValues(address,count)
         for callback in self.rcallbacks:
-            callback(self.datablock,address,values)
+            values=callback(self.datablock,address,values)
+        #self.profile['datablocks'][self.datablock][str(address)]['value']=values
         return values
 
     ##\brief Validate modbus register contents

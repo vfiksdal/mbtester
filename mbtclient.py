@@ -142,9 +142,8 @@ class ClientObject():
     ##\brief Read registers from the server
     # \param datablock Datablock to read from (di,co,hr or ir)
     # \param address Register address to read from
-    # \param decode Wether to decode value from registers after reading
     # \return Decoded value, or None upon failure
-    def read(self,datablock,address,decode=True):
+    def read(self,datablock,address):
         response=None
         try:
             # Parse register information
@@ -163,7 +162,6 @@ class ClientObject():
         if response.isError() or isinstance(response, ExceptionResponse):
             logging.warning(str(response))
             return None
-        if not decode: return response.registers
         if datablock=='di' or datablock=='co': return response.bits[0]
         if datablock=='hr' or datablock=='ir': return Registers.decodeRegister(registerdata,response.registers)
         return None
@@ -171,15 +169,14 @@ class ClientObject():
     ##\brief Write registers to the server
     # \param datablock Datablock to write to (di,co,hr or ir)
     # \param address Register address to write to
-    # \param encode Wether to encode value to registers before writing
     # \return True upon success
-    def write(self,datablock,address,value,encode=True):
+    def write(self,datablock,address,value):
         response=None
         try:
             # Parse register information
             registerdata=self.profile['datablocks'][datablock][str(address)]
             registeraddress=int(address)+self.offset
-            if encode: value=Registers.encodeRegister(registerdata,value)
+            value=Registers.encodeRegister(registerdata,value)
 
             # Execute request
             if datablock=='co': response = self.client.write_coil(registeraddress,value,self.deviceid)

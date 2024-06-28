@@ -36,9 +36,11 @@ class ProxyObject():
         if self.override:
             with self.lock:
                 self.override=False
-                logging.info('Writing profile['+datablock+']['+str(address)+']='+str(value))
-                if not self.client.write(datablock,address,value,False):
+                value=Registers.decodeRegister(self.client.profile['datablocks'][datablock][str(address)],value)
+                logging.info('Writing '+Utilities.getDatablockName(datablock)+' #'+str(address)+' = '+str(value))
+                if not self.client.write(datablock,address,value):
                     retval=getattr(self.server,datablock).getValues(address)
+                    logging.warning('Failed to write value. Falling back to '+str(retval))
                 self.override=True
         return retval
 
@@ -47,10 +49,10 @@ class ProxyObject():
         if self.override:
             with self.lock:
                 self.override=False
-                logging.info('Reading profile['+datablock+']['+str(address)+']')
-                read=self.client.read(datablock,address,False)
+                read=self.client.read(datablock,address)
+                logging.info('Reading '+Utilities.getDatablockName(datablock)+' #'+str(address)+' = '+str(read))
                 if read!=None:
-                    logging.info('Storing: profile['+datablock+']['+str(address)+']='+str(read))
+                    read=Registers.encodeRegister(self.client.profile['datablocks'][datablock][str(address)],read)
                     getattr(self.server,datablock).setValues(address,read)
                     retval=read
                 self.override=True
