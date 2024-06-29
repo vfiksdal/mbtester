@@ -59,6 +59,7 @@ Section "MBTester GUI" MBTGUI
     CreateDirectory "$SMPROGRAMS\$StartMenuFolder"
     CreateShortcut "$SMPROGRAMS\$StartMenuFolder\MBTServer.lnk" "$INSTDIR\qmbtester.exe" "--server"
     CreateShortcut "$SMPROGRAMS\$StartMenuFolder\MBTClient.lnk" "$INSTDIR\qmbtester.exe" "--client"
+    CreateShortcut "$SMPROGRAMS\$StartMenuFolder\MBTProxy.lnk" "$INSTDIR\qmbtester.exe" "--server --client"
     !insertmacro MUI_STARTMENU_WRITE_END
 SectionEnd
 
@@ -92,6 +93,7 @@ Section -Uninstall
     !insertmacro MUI_STARTMENU_GETFOLDER Application $StartMenuFolder
     Delete "$SMPROGRAMS\$StartMenuFolder\MBTServer.lnk"
     Delete "$SMPROGRAMS\$StartMenuFolder\MBTClient.lnk"
+    Delete "$SMPROGRAMS\$StartMenuFolder\MBTProxy.lnk"
     RMDir "$SMPROGRAMS\$StartMenuFolder"
 SectionEnd
 
