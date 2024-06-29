@@ -25,10 +25,39 @@ class ProxyUI(ServerUI):
         for line in App.reportConfig(clientargs).split('\n'):
             self.conframe.addText(line)
 
+        # Temporarily load worker to read current values
+        self.worker=ClientWorker(self.client)
+        self.worker.addReadCallback(self.updateWrite)
+        self.worker.addCompletedCallback(self.updateComplete)
+        self.worker.start()
+
         # Bind server and client
         self.proxy=ProxyObject(self.server,self.client)
         self.show()
 
+    ##\brief Update read/write value
+    # \param datablock Datablock containing register
+    # \param address Register address that has changed
+    # \param value New register value
+    # \return Original value
+    def updateWrite(self,datablock,address,value):
+        value=Registers.encodeRegister(self.client.profile['datablocks'][datablock][str(address)],value)
+        if datablock=='di': self.table_di.updateWrite(datablock,address,value)
+        if datablock=='co': self.table_co.updateWrite(datablock,address,value)
+        if datablock=='hr': self.table_hr.updateWrite(datablock,address,value)
+        if datablock=='ir': self.table_ir.updateWrite(datablock,address,value)
+
+    ##\brief Close worker after initial read
+    def updateComplete(self):
+        logging.info('Read initial server values')
+        self.worker.running=False
+
+    ##\brief Stop background processes upon terminating the application
+    # \param event Not used
+    def closeEvent(self, event):
+        if self.worker: self.worker.close()
+        if self.client: self.client.close()
+        super().closeEvent(event)
 
 if __name__ == "__main__":
     # Parse command line options

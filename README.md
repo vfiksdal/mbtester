@@ -33,14 +33,13 @@ With the server running you can start a client. Choose the profile you wrote (Mu
 # Using MBTester
 The actual usage of this application depends upon what you want to accomplish with it. But generally speaking you first want to write a profile to define your interface, then test it by loading up in both server and client applications simultaniously.
 
-## QMBTServer
-This is the Qt version of the server program. You can use this to emulate your own device or some device you need to integrate in the system. The GUI monitors any register changed in real-time, and allows changing registers at your convenience. You can also enable debug-level logging to see the lowlevel traffic from your clients.
-
-## QMBTClient
-This is the Qt version of the client program. You can use this to interrogate your device, write values to your server, monitor register changes in real-time and/or log values to disk in CSV format. You can also enable debug-level logging to see the lowlevel traffic to your server.
+Each application comes with both GUI and commandline interfaces. The former gives you visual feedback and real-time control over the running process, while the latter are lightweight and versatile in their own right. The GUI counterparts are named the same but has a Q prepended as they are implemented in Qt.
 
 ## MBTServer
-This is the CLI version of the server program. You can use this to run a server process in the background.
+A simple MODBUS server. You can use this to emulate your own device or some device you need to integrate. The GUI monitors any register changed in real-time, and allows changing registers at your convenience. You can also enable debug-level logging to see the lowlevel traffic from your clients.
 
 ## MBTClient
-This is the CLI version of the client program. Not very useful at the moment, but you can use it to download a JSON snapshot of the current server registers, which can be parsed and logged to disk as a simple monitoring service.
+A simple MODBUS client. You can use this to interrogate your device, write values to your server, monitor register changes in real-time and/or log values to disk in CSV format. You can also enable debug-level logging to see the lowlevel traffic to your server.
+
+## MBTProxy
+A simple MODBUS proxy/forwarder. Basically it is a server (With any communication interface) and a client (Also with any communication interface) in one program. Any read and write requests to the server is forwarded to a remote server by the client. You can use this to bridge tcp and serial systems etc. You can also use it to monitor the traffic between devices for testing purposes.
