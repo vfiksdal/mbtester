@@ -34,7 +34,7 @@ def build_bin():
 def build_zip():
     print('Archiving output files')
     shutil.make_archive('mbtester-'+App.getVersion(), 'zip', 'dist')
-    #shutil.move('mbtester-'+App.getVersion()+'.zip','dist')
+    #shutil.move('mbtester-binaries-'+App.getVersion()+'.zip','dist')
 
 def build_installer():
     print('Making installer')
@@ -42,8 +42,8 @@ def build_installer():
     if os.path.exists(nsispath):
         shutil.copy('extras\\mbtester.nsi','dist')
         os.system('"'+nsispath+'"'+' /NOCD dist\\mbtester.nsi')
-        shutil.move('mbtester.exe','mbtester-'+App.getVersion()+'.exe')
-        #shutil.move('mbtester-'+App.getVersion()+'.exe','dist')
+        shutil.move('mbtester.exe','mbtester-installer-'+App.getVersion()+'.exe')
+        #shutil.move('mbtester-installer-'+App.getVersion()+'.exe','dist')
     else:
         print('Could not find NSIS -- Skipping')
 

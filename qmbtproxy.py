@@ -6,22 +6,33 @@ class ProxyUI(ServerUI):
     ##\brief Loads components and sets layout
     # \param args Parsed commandline arguments
     # \param parent Parent object
-    def __init__(self,serverargs,clientargs,aboutstring,parent=None):
-        super().__init__(serverargs,aboutstring,parent)
+    def __init__(self,serverargs,clientargs,aboutstring):
+        super().__init__(serverargs,aboutstring,False)
         self.setWindowTitle(App.getTitle('proxy'))
         self.hide()
 
         # Try to connect with dialog
+        self.worker=None
+        self.conframe.showMessagebox(True)
         clientargs.profile=serverargs.profile
         self.aboutstring=aboutstring
         self.client=None
         while(True):
             if Connect(clientargs,'MODBUS Client Options',True).exec_()!=0:
+                mtcp=(clientargs.comm=='tcp' and serverargs.comm=='tcp')
+                mudp=(clientargs.comm=='udp' and serverargs.comm=='udp')
+                mhost=(clientargs.host==serverargs.host)
+                mport=(clientargs.port==serverargs.port)
+                if (mtcp or mudp) and mhost and mport:
+                    logging.error('Server and client is the same!')
+                    continue
                 self.client=ClientObject(clientargs)
                 if self.client.connect(): break
             else:
                 logging.error('User aborted')
+                self.close()
                 sys.exit()
+        self.conframe.showMessagebox(False)
         for line in App.reportConfig(clientargs).split('\n'):
             self.conframe.addText(line)
 
@@ -33,7 +44,7 @@ class ProxyUI(ServerUI):
 
         # Bind server and client
         self.proxy=ProxyObject(self.server,self.client)
-        self.show()
+        self.showMaximized()
 
     ##\brief Update read/write value
     # \param datablock Datablock containing register

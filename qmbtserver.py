@@ -122,8 +122,8 @@ class ServerUI(QMainWindow):
     ##\brief Loads components and sets layout
     # \param args Parsed commandline arguments
     # \param parent Parent object
-    def __init__(self,args,aboutstring,parent=None):
-        super(ServerUI,self).__init__(parent)
+    def __init__(self,args,aboutstring,show=True):
+        super(ServerUI,self).__init__(None)
 
         # Try to connect with dialog
         self.aboutstring=aboutstring
@@ -220,7 +220,7 @@ class ServerUI(QMainWindow):
         self.setCentralWidget(splitter)
         self.setWindowTitle(App.getTitle('server'))
         self.resize(800,600)
-        self.showMaximized()
+        if show: self.showMaximized()
         logging.debug('Loaded GUI components')
 
     ##\brief Stop background processes upon terminating the application

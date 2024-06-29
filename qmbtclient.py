@@ -91,8 +91,8 @@ class ClientUI(QMainWindow):
     ##\brief Loads components and sets layout
     # \param args Parsed commandline arguments
     # \param parent Parent object
-    def __init__(self,args,aboutstring,parent=None):
-        super(ClientUI,self).__init__(parent)
+    def __init__(self,args,aboutstring):
+        super(ClientUI,self).__init__(None)
 
         # Try to connect with dialog
         self.aboutstring=aboutstring
