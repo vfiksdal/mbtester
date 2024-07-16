@@ -29,10 +29,10 @@ class AsyncServerObject():
     def __init__(self,args):
         # Parse profile and contexts
         self.profile=Profiles.loadProfile(args,args.profile)
-        self.di=DataBlock(self.profile,'di')
-        self.co=DataBlock(self.profile,'co')
-        self.hr=DataBlock(self.profile,'hr')
-        self.ir=DataBlock(self.profile,'ir')
+        self.di=DataBlock(self.profile,'di',args.strict)
+        self.co=DataBlock(self.profile,'co',args.strict)
+        self.hr=DataBlock(self.profile,'hr',args.strict)
+        self.ir=DataBlock(self.profile,'ir',args.strict)
         self.slavecontext=ModbusSlaveContext(di=self.di, co=self.co, hr=self.hr, ir=self.ir)
         if args.deviceid:
             self.mastercontext=ModbusServerContext(slaves={args.deviceid:self.slavecontext},single=False)

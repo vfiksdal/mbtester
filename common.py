@@ -327,16 +327,30 @@ class Registers():
 class DataBlock(ModbusSparseDataBlock):
     ##\brief Initiates data storage and loads profile
     # \param profile Modbus registers to load
-    def __init__(self, profile, datablock):
+    # \param datablock Modbus datablock to load
+    # \param string Set to true to only respond to defined address (Enable IllegalAddress exceptions)
+    def __init__(self, profile, datablock, strict=False):
         self.rcallbacks=[]
         self.wcallbacks=[]
         self.profile=profile
         self.datablock=datablock
         registers={}
-        for key in profile['datablocks'][datablock]:
-            register=profile['datablocks'][datablock][key]
-            logging.debug('Setting register['+key+']='+str(register['value']))
-            registers[int(key)]=Registers.encodeRegister(register,register['value'])
+        prev=0
+        keys=list(profile['datablocks'][datablock].keys())
+        for i in range(len(keys)): keys[i]=int(keys[i])
+        keys.sort()
+        for key in keys:
+            register=profile['datablocks'][datablock][str(key)]
+            logging.debug('Setting register['+str(key)+']='+str(register['value']))
+            if not strict:
+                for i in range(prev+1,key):
+                    prev+=1
+                    if datablock=='di' or datablock=='co':
+                        registers[prev]=Registers.encodeRegister({'dtype':'bit','bo':'<','wo':'<'},0)
+                    if datablock=='hr' or datablock=='ir':
+                        registers[prev]=Registers.encodeRegister({'dtype':'uint16','bo':'<','wo':'<'},0)
+            registers[key]=Registers.encodeRegister(register,register['value'])
+            prev+=len(registers[key])
         super().__init__(registers)
 
     ##\brief Add callback for register write
@@ -491,6 +505,7 @@ class Loader():
         parser.add_argument('-B','--bytesize',choices=[7,8],help='Serial bits per byte',dest='bytesize',default=8,type=int)
         parser.add_argument('-t','--timeout',help='Request timeout',dest='timeout',default=1,type=int)
         parser.add_argument('-p','--profile',help='MODBUS register profile to serve',dest='profile',default='',type=str)
+        parser.add_argument('-a','--strict',help='Only respond to defined registers',action='store_true')
         parser.add_argument('-L','--list',choices=['profiles', 'serial'],help='List available resources',dest='list',default=None,type=str)
         parser.add_argument('-v','--version',help='Print version information',action='store_true')
         parser.add_argument('-l','--log',choices=['critical', 'error', 'warning', 'info', 'debug'],help='Log level, default is info',dest='log',default='info',type=str)
