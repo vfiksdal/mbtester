@@ -9,13 +9,109 @@ import logging.handlers
 import sys,logging
 
 # Import QT modules
-from PyQt5.QtWidgets import QApplication, QMainWindow, QProgressBar, QSplitter, QTreeView, QStatusBar, QScrollArea, QMenuBar, QMenu, QAction, QActionGroup
+from PyQt5.QtWidgets import QApplication, QMainWindow, QProgressBar, QSplitter, QTreeView, QStatusBar, QScrollArea, QMenuBar, QMenu, QAction, QActionGroup, QSpinBox
 from PyQt5.Qt import QStandardItemModel
 from PyQt5.QtCore import Qt, QTimer
 
 # Import local modules
 from components import *
 from mbtclient import *
+
+class LabeledControl(QFrame):
+    def __init__(self,label,control):
+        super().__init__()
+        hlayout=QHBoxLayout()
+        hlayout.addWidget(QLabel(label),1)
+        hlayout.addWidget(control,1)
+        self.setLayout(hlayout)
+
+class CustomClientFrame(QFrame):
+    def __init__(self,worker):
+        super().__init__()
+        self.worker=worker
+        self.client=worker.client.client
+        self.args=worker.client.args
+        self.deviceid=QSpinBox()
+        self.function=QComboBox()
+        self.address=QSpinBox()
+        self.count=QSpinBox()
+        self.border=QComboBox()
+        self.worder=QComboBox()
+        self.log=QListWidget()
+        button=QPushButton('Execute')
+        layout=QVBoxLayout()
+        layout.addWidget(LabeledControl('Device ID',self.deviceid))
+        layout.addWidget(LabeledControl('Function',self.function))
+        layout.addWidget(LabeledControl('Address',self.address))
+        layout.addWidget(LabeledControl('Count',self.count))
+        layout.addWidget(LabeledControl('Word order',self.worder))
+        layout.addWidget(LabeledControl('Byte order',self.border))
+        layout.addWidget(LabeledControl('',button))
+        layout.addWidget(self.log,1)
+        self.deviceid.setRange(0,248)
+        self.deviceid.setValue(self.args.deviceid)
+        self.address.setRange(0,65536)
+        self.address.setValue(1)
+        self.count.setRange(1,16)
+        self.count.setValue(1)
+        self.function.addItem('01 - Read Coils')
+        self.function.addItem('02 - Read Discrete Inputs')
+        self.function.addItem('03 - Read Holding Registers')
+        self.function.addItem('04 - Read Input Registers')
+        self.function.addItem('05 - Write single Coil')
+        self.function.addItem('06 - Write single Register')
+        self.function.addItem('15 - Write multiple Coils')
+        self.function.addItem('16 - Write multiple Registers')
+        self.function.setCurrentIndex(2)
+        self.border.addItem('Little endian')
+        self.border.addItem('Big endian')
+        self.worder.addItem('Little endian')
+        self.worder.addItem('Big endian')
+        self.log.setFont(QFont('cascadia mono'))
+        button.clicked.connect(self.Execute)
+        self.setLayout(layout)
+
+    def Execute(self):
+        self.worker.setPaused(True)
+        self.log.clear()
+        deviceid=self.deviceid.value()
+        address=self.address.value()#+self.args.offset
+        count=self.count.value()
+        response=None
+        if self.border.currentIndex()==0:
+            border='<'
+        else:
+            border='>'
+        if self.worder.currentIndex()==0:
+            worder='<'
+        else:
+            worder='>'
+        try:
+            if self.function.currentIndex()==0: response=self.client.read_coils(address,count,deviceid)
+            if self.function.currentIndex()==1: response=self.client.read_discrete_inputs(address,count,deviceid)
+            if self.function.currentIndex()==2: response=self.client.read_holding_registers(address,count,deviceid)
+            if self.function.currentIndex()==3: response=self.client.read_input_registers(address,count,deviceid)
+        except ModbusException as exc:
+            self.log.addItem('Exception: '+str(exc))
+            response=None
+        if response!=None and (response.isError() or isinstance(response, ExceptionResponse)):
+            self.log.addItem('Error: '+str(response))
+            response=None
+        if response!=None:
+            # Do something
+            if self.function.currentIndex()==0 or self.function.currentIndex()==1:
+                for i in range(count):
+                    self.log.addItem('Read address '+str(address)+': '+str(response.bits[i]))
+                    address+=1
+            if self.function.currentIndex()==2 or self.function.currentIndex()==3:
+                decoder = BinaryPayloadDecoder.fromRegisters(response.registers, byteorder=border, wordorder=worder)
+                for register in response.registers:
+                    self.log.addItem('Read address '+str(address)+': '+str(decoder.decode_16bit_uint()))
+                    address+=1
+
+
+        self.worker.setPaused(False)
+
 
 ##\class ClientTableFrame
 # \brief Table to hold and interact with a modbus register block
@@ -158,6 +254,7 @@ class ClientUI(QMainWindow):
         rootnode.appendRow(StandardItem(Utilities.getDatablockName('co')))
         rootnode.appendRow(StandardItem(Utilities.getDatablockName('hr')))
         rootnode.appendRow(StandardItem(Utilities.getDatablockName('ir')))
+        rootnode.appendRow(StandardItem('Custom request'))
         rootnode.appendRow(StandardItem('Logging'))
         rootnode.appendRow(conitem)
 
@@ -173,10 +270,12 @@ class ClientUI(QMainWindow):
         self.table_co=ClientTableFrame(self.worker,'co')
         self.table_hr=ClientTableFrame(self.worker,'hr')
         self.table_ir=ClientTableFrame(self.worker,'ir')
+        self.customframe=CustomClientFrame(self.worker)
         self.table_di.setVisible(False)
         self.table_co.setVisible(False)
         self.table_hr.setVisible(False)
         self.table_ir.setVisible(False)
+        self.customframe.setVisible(False)
         self.worker.start()
 
         # Load frame for logging
@@ -201,6 +300,7 @@ class ClientUI(QMainWindow):
         layout.addWidget(self.table_co)
         layout.addWidget(self.table_hr)
         layout.addWidget(self.table_ir)
+        layout.addWidget(self.customframe)
         layout.addWidget(self.logging)
         widget.setLayout(layout)
         scrollarea.setWidgetResizable(True)
@@ -232,6 +332,7 @@ class ClientUI(QMainWindow):
         self.table_co.setVisible(title==Utilities.getDatablockName('co'))
         self.table_hr.setVisible(title==Utilities.getDatablockName('hr'))
         self.table_ir.setVisible(title==Utilities.getDatablockName('ir'))
+        self.customframe.setVisible(title=='Custom request')
         self.logging.setVisible(title=='Logging')
         self.conframe.setVisible(title=='Console')
 

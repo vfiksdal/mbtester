@@ -226,6 +226,7 @@ class ClientWorker():
         self.ccallbacks=[]
         self.reglist=[]
         self.backlog=[]
+        self.paused=False
         self.started=None
         self.duration=0
         self.rcount=0
@@ -262,6 +263,7 @@ class ClientWorker():
                 rprg=int((1-(len(self.backlog)/len(self.reglist)))*100)
             else:
                 rprg=0
+            if self.paused: iprg,rprg=0,0
             return len(self.backlog),self.rcount,self.wcount,self.duration,iprg,rprg
 
     ##\brief Get current polling interval
@@ -296,12 +298,20 @@ class ClientWorker():
         self.thread=threading.Thread(target=self.worker)
         self.thread.start()
 
+    ##\brief Pause or resume client worker
+    def setPaused(self,paused):
+        self.paused=paused
+
     ##\brief Background thread to read/write values
     def worker(self):
         while self.running:
             with self.lock:
                 # Get timestamp
                 now=time.time()
+
+                # Check for paused state
+                if self.paused:
+                    continue
 
                 # Check for completed cycle
                 if len(self.backlog)==0 and self.started:
