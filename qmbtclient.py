@@ -25,6 +25,55 @@ class LabeledControl(QFrame):
         hlayout.addWidget(control,1)
         self.setLayout(hlayout)
 
+##\class DeviceIdFrame
+# \brief Frame to send and receive identification MODBUS requests to device
+class DeviceIdFrame(QFrame):
+    def __init__(self,worker):
+        super().__init__()
+        self.worker=worker
+        self.client=worker.client.client
+        self.args=worker.client.args
+        self.deviceid=QSpinBox()
+        self.function=QComboBox()
+        self.log=QListWidget()
+        button=QPushButton('Execute')
+        layout=QVBoxLayout()
+        layout.addWidget(LabeledControl('Device ID',self.deviceid))
+        layout.addWidget(LabeledControl('Function',self.function))
+        layout.addWidget(LabeledControl('',button))
+        layout.addWidget(self.log,1)
+        self.deviceid.setRange(0,248)
+        self.deviceid.setValue(self.args.deviceid)
+        self.function.addItem('01 - Basic Device Identification')
+        self.function.addItem('02 - Regular Device Identification')
+        self.function.addItem('03 - Extended Device Identification')
+        self.function.setCurrentIndex(0)
+        self.log.setFont(QFont('cascadia mono'))
+        button.clicked.connect(self.Execute)
+        self.setLayout(layout)
+
+    def Execute(self):
+        self.worker.setPaused(True)
+        self.log.clear()
+        deviceid=self.deviceid.value()
+        devicefnc=self.function.currentIndex()+1
+        try:
+            response=self.client.read_device_information(devicefnc,slave=deviceid)
+        except ModbusException as exc:
+            self.log.addItem('Exception: '+str(exc))
+            response=None
+        if response!=None and (response.isError() or isinstance(response, ExceptionResponse)):
+            self.log.addItem('Error: '+str(response))
+            response=None
+        if response!=None:
+            for key in response.information.keys():
+                self.log.addItem(response.information[key].decode('utf-8'))
+        self.worker.setPaused(False)
+
+
+
+##\class CustomClientFrame
+# \brief Frame to send and receive custom MODBUS requests to device
 class CustomClientFrame(QFrame):
     def __init__(self,worker):
         super().__init__()
@@ -255,6 +304,7 @@ class ClientUI(QMainWindow):
         rootnode.appendRow(StandardItem(Utilities.getDatablockName('hr')))
         rootnode.appendRow(StandardItem(Utilities.getDatablockName('ir')))
         rootnode.appendRow(StandardItem('Custom request'))
+        rootnode.appendRow(StandardItem('Device ID'))
         rootnode.appendRow(StandardItem('Logging'))
         rootnode.appendRow(conitem)
 
@@ -271,11 +321,13 @@ class ClientUI(QMainWindow):
         self.table_hr=ClientTableFrame(self.worker,'hr')
         self.table_ir=ClientTableFrame(self.worker,'ir')
         self.customframe=CustomClientFrame(self.worker)
+        self.deviceidframe=DeviceIdFrame(self.worker)
         self.table_di.setVisible(False)
         self.table_co.setVisible(False)
         self.table_hr.setVisible(False)
         self.table_ir.setVisible(False)
         self.customframe.setVisible(False)
+        self.deviceidframe.setVisible(False)
         self.worker.start()
 
         # Load frame for logging
@@ -301,6 +353,7 @@ class ClientUI(QMainWindow):
         layout.addWidget(self.table_hr)
         layout.addWidget(self.table_ir)
         layout.addWidget(self.customframe)
+        layout.addWidget(self.deviceidframe)
         layout.addWidget(self.logging)
         widget.setLayout(layout)
         scrollarea.setWidgetResizable(True)
@@ -333,6 +386,7 @@ class ClientUI(QMainWindow):
         self.table_hr.setVisible(title==Utilities.getDatablockName('hr'))
         self.table_ir.setVisible(title==Utilities.getDatablockName('ir'))
         self.customframe.setVisible(title=='Custom request')
+        self.deviceidframe.setVisible(title=='Device ID')
         self.logging.setVisible(title=='Logging')
         self.conframe.setVisible(title=='Console')
 
