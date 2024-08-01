@@ -202,7 +202,7 @@ class Connect(QDialog):
     def __init__(self,args,title,hideprofile=False):
         super(Connect,self).__init__(None)
         self.setWindowTitle(title)
-        #self.resize(500,200)
+        self.resize(500,200)
         self.args=args
         self.profilelabel=QLabel('MODBUS profile')
         self.profilelist=QComboBox()
@@ -223,9 +223,14 @@ class Connect(QDialog):
         self.flowlist=QComboBox()
         self.buttons=QDialogButtonBox(self)
         self.buttons.setStandardButtons(QDialogButtonBox.Cancel|QDialogButtonBox.Ok)
+        hlayout=QHBoxLayout()
+        self.browse=QPushButton('...')
+        self.browse.clicked.connect(self.Browse)
         vlayout=QVBoxLayout()
         vlayout.addWidget(self.profilelabel)
-        vlayout.addWidget(self.profilelist)
+        hlayout.addWidget(self.profilelist,1)
+        hlayout.addWidget(self.browse)
+        vlayout.addLayout(hlayout)
         vlayout.addWidget(QLabel('Communication interface'))
         vlayout.addWidget(self.commlist)
         vlayout.addWidget(QLabel('MODBUS framer'))
@@ -296,6 +301,11 @@ class Connect(QDialog):
         self.setDefault(self.baudlist,args.baudrate)
         self.setDefault(self.paritylist,Utilities.getParityName(args.parity))
 
+    def Browse(self):
+        filename, _ = QFileDialog.getOpenFileName(self,'Load profile','','Profile files(*.json);;All Files(*.*)',options=QFileDialog.Options())
+        if len(filename) and os.path.exists(filename):
+            self.profilelist.addItem(filename)
+            self.profilelist.setCurrentIndex(self.profilelist.count()-1)
 
     ##\brief Set dropdown selection to a default value
     # \param argument Desired default value
@@ -334,10 +344,16 @@ class Connect(QDialog):
     def open(self):
         # Try to connect
         try:
-            profiles=self.profiles[self.profilelist.currentIndex()]
-            self.args.profile = profiles[0]+profiles[1]
             self.args.comm = self.commlist.currentText().lower()
             self.args.framer = self.framerlist.currentText().lower()
+            if self.profilelist.currentIndex()<len(self.profiles):
+                profiles=self.profiles[self.profilelist.currentIndex()]
+                self.args.profile = profiles[0]+profiles[1]
+            else:
+                self.args.profile=self.profilelist.itemText(self.profilelist.currentIndex())
+            if not os.path.exists(self.args.profile):
+                logging.error('Invalid profile: '+str(self.args.profile))
+                return
             if self.args.comm == 'serial':
                 # Parse flowcontrol
                 self.args.xonxoff=0
