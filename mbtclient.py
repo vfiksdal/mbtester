@@ -25,9 +25,9 @@ class AsyncClientObject():
         # Load client object
         self.args=args
         self.client=None
-        if args.comm=='tcp':    self.client = ModbusClient.AsyncModbusTcpClient(args.host,args.port,args.framer,timeout=args.timeout,retries=3)
-        if args.comm=='udp':    self.client = ModbusClient.AsyncModbusUdpClient(args.host,args.port,args.framer,timeout=args.timeout,retries=3)
-        if args.comm=='serial': self.client = ModbusClient.AsyncModbusSerialClient(args.serial,args.framer,args.baudrate,args.bytesize,args.parity,timeout=args.timeout,strict=True,stopbits=1,retries=3,handle_local_echo=False)
+        if args.comm=='tcp':    self.client = ModbusClient.AsyncModbusTcpClient(host=args.host,port=args.port,framer=args.framer,timeout=args.timeout,retries=3)
+        if args.comm=='udp':    self.client = ModbusClient.AsyncModbusUdpClient(host=args.host,port=args.port,framer=args.framer,timeout=args.timeout,retries=3)
+        if args.comm=='serial': self.client = ModbusClient.AsyncModbusSerialClient(port=args.serial,framer=args.framer,baudrate=args.baudrate,bytesize=args.bytesize,parity=args.parity,timeout=args.timeout,strict=True,stopbits=1,retries=3,handle_local_echo=False)
 
     ##\brief Connect to the server
     # \return True if succsessfully connected
@@ -127,9 +127,9 @@ class ClientObject():
         # Load client object
         self.args=args
         self.client=None
-        if args.comm=='tcp':    self.client = ModbusClient.ModbusTcpClient(args.host,args.port,args.framer,timeout=args.timeout,retries=3)
-        if args.comm=='udp':    self.client = ModbusClient.ModbusUdpClient(args.host,args.port,args.framer,timeout=args.timeout,retries=3)
-        if args.comm=='serial': self.client = ModbusClient.ModbusSerialClient(args.serial,args.framer,args.baudrate,args.bytesize,args.parity,timeout=args.timeout,strict=True,stopbits=1,retries=3,handle_local_echo=False)
+        if args.comm=='tcp':    self.client = ModbusClient.ModbusTcpClient(host=args.host,port=args.port,framer=args.framer,timeout=args.timeout,retries=3)
+        if args.comm=='udp':    self.client = ModbusClient.ModbusUdpClient(host=args.host,port=args.port,framer=args.framer,timeout=args.timeout,retries=3)
+        if args.comm=='serial': self.client = ModbusClient.ModbusSerialClient(port=args.serial,framer=args.framer,baudrate=args.baudrate,bytesize=args.bytesize,parity=args.parity,timeout=args.timeout,strict=True,stopbits=1,retries=3,handle_local_echo=False)
 
     ##\brief Connect to the server
     # \return True if succsessfully connected
